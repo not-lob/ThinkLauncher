@@ -10,10 +10,11 @@ import android.view.View;
 import androidx.annotation.Nullable;
 
 /**
- * Draws the classic dot-plus-arcs WiFi glyph, with 0-4 arcs lit solid and the rest left faint, or a
- * slashed dot when offline. Hand-drawn rather than shipped as vector-drawable levels: this keeps the
- * icon a plain runtime-tinted View like {@link BatteryLevelView}, matching every other themed icon
- * on the home screen, without hand-typing vector path data for five separate drawables.
+ * A solid filled WiFi wedge, matching Android's own status-bar glyph (a single filled pie-slice
+ * cone, not stroked arcs) rather than a hand-drawn dot-and-arcs icon. Signal level scales the
+ * wedge's radius - smaller cone for a weaker signal, full-size cone at max - the same way Android's
+ * own signal_wifi_N_bar icon set literally uses progressively larger cones per level. Offline shows
+ * a faint full-size cone with a diagonal slash through it, echoing the standard "wifi off" glyph.
  */
 public class WifiLevelView extends View {
 
@@ -33,10 +34,8 @@ public class WifiLevelView extends View {
     }
 
     private void init() {
-        solidPaint.setStyle(Paint.Style.STROKE);
-        solidPaint.setStrokeCap(Paint.Cap.ROUND);
-        faintPaint.setStyle(Paint.Style.STROKE);
-        faintPaint.setStrokeCap(Paint.Cap.ROUND);
+        solidPaint.setStyle(Paint.Style.FILL);
+        faintPaint.setStyle(Paint.Style.FILL);
         setColor(0xFF000000);
     }
 
@@ -47,7 +46,7 @@ public class WifiLevelView extends View {
         invalidate();
     }
 
-    /** level: 0 (no bars) - 4 (full signal). Ignored when offline. */
+    /** level: 0 (weakest) - 4 (full signal). Ignored when offline. */
     public void setState(int level, boolean offline) {
         this.level = Math.max(0, Math.min(4, level));
         this.offline = offline;
@@ -59,31 +58,32 @@ public class WifiLevelView extends View {
         super.onDraw(canvas);
         float density = getResources().getDisplayMetrics().density;
         float stroke = Math.max(1f, 1.6f * density);
-        solidPaint.setStrokeWidth(stroke);
-        faintPaint.setStrokeWidth(stroke);
+        float strokeHalf = stroke / 2f;
 
         float w = getWidth();
         float h = getHeight();
-        float dotRadius = Math.max(1.5f * density, w * 0.06f);
         float cx = w / 2f;
-        float cy = h - dotRadius - stroke;
-
-        canvas.drawCircle(cx, cy, dotRadius, offline ? faintPaint : solidPaint);
-
-        // Three concentric arcs above the dot, mapped from 4 signal levels: level 4 lights all
-        // three, level 1 lights none (just the dot), matching the familiar phone-status-bar look.
-        int arcs = 3;
-        float maxRadius = Math.min(w, h) - stroke;
-        for (int i = 0; i < arcs; i++) {
-            float radius = maxRadius * (i + 1) / (float) arcs;
-            RectF oval = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
-            boolean lit = !offline && level >= i + 2;
-            canvas.drawArc(oval, 225, 90, false, lit ? solidPaint : faintPaint);
-        }
+        // The wedge's vertex sits at (cx, cy); drawArc's bounding oval is centered there too, so
+        // the same radius bounds a straight-up 90deg pie slice on both axes without clipping:
+        // top of the arc is at (cx, cy - radius), sides at cx +/- radius*sin(45deg).
+        float cy = h - strokeHalf;
+        float maxRadiusVertical = cy - strokeHalf;
+        float maxRadiusHorizontal = (cx - strokeHalf) / 0.7071f;
+        float maxRadius = Math.min(maxRadiusVertical, maxRadiusHorizontal);
 
         if (offline) {
-            float pad = stroke;
-            canvas.drawLine(pad, pad, w - pad, h - pad, solidPaint);
+            RectF oval = new RectF(cx - maxRadius, cy - maxRadius, cx + maxRadius, cy + maxRadius);
+            canvas.drawArc(oval, 225, 90, true, faintPaint);
+            canvas.drawLine(strokeHalf, strokeHalf, w - strokeHalf, h - strokeHalf, solidPaint);
+            return;
         }
+
+        // Levels 1-4 map to progressively larger cones (level 0 = smallest sliver, matching the
+        // "weak signal" end of Android's own bar icons rather than disappearing entirely).
+        float minRadiusFraction = 0.35f;
+        float fraction = minRadiusFraction + (1f - minRadiusFraction) * (level / 4f);
+        float radius = maxRadius * fraction;
+        RectF oval = new RectF(cx - radius, cy - radius, cx + radius, cy + radius);
+        canvas.drawArc(oval, 225, 90, true, solidPaint);
     }
 }

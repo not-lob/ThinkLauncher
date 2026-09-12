@@ -91,7 +91,12 @@ public class StatusRowWidget implements HomeWidget {
         if (showWifi) {
             wifiIcon = new WifiLevelView(host);
             wifiIcon.setColor(textColor);
-            container.addView(wifiIcon, new LinearLayout.LayoutParams(iconSizePx, iconSizePx));
+            // WifiLevelView's wedge is bounded by both width and height (see its onDraw) - a
+            // square box makes width the limiting factor, so the wedge falls short of the full
+            // icon height next to the battery gauge. A ~1.42x-wide box (1/sin(45deg)) lets height
+            // be the limiting factor instead, so it fills the same vertical space the battery does.
+            container.addView(wifiIcon, new LinearLayout.LayoutParams(
+                    (int) (iconSizePx * 1.42f), iconSizePx));
         }
 
         RelativeLayout.LayoutParams rlp = new RelativeLayout.LayoutParams(
