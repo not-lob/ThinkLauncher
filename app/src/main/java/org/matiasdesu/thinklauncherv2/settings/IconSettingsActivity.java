@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -12,6 +13,7 @@ import android.widget.TextView;
 import org.matiasdesu.thinklauncherv2.MainActivity;
 import org.matiasdesu.thinklauncherv2.R;
 import org.matiasdesu.thinklauncherv2.utils.AppNamePositionHelper;
+import org.matiasdesu.thinklauncherv2.utils.IconPackHelper;
 import org.matiasdesu.thinklauncherv2.utils.IconShapeHelper;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
@@ -34,6 +36,7 @@ public class IconSettingsActivity extends BaseSettingsActivity {
     private int iconSize;
     private int iconEffect;
     private int iconEffectColor;
+    private boolean iconPackTint;
 
     private BroadcastReceiver homeButtonReceiver = new BroadcastReceiver() {
         @Override
@@ -78,7 +81,31 @@ public class IconSettingsActivity extends BaseSettingsActivity {
         iconSize = prefs.getInt("icon_size", 32);
         iconEffect = prefs.getInt("icon_effect", 0);
         iconEffectColor = prefs.getInt("icon_effect_color", 0);
+        iconPackTint = prefs.getBoolean(IconPackHelper.PREF_ICON_PACK_TINT, true);
         screenAnimations = prefs.getInt("screen_animations", 0) == 1;
+
+        findViewById(R.id.icon_pack_button).setOnClickListener(v -> {
+            Intent intent = new Intent(this, IconPackSettingsActivity.class);
+            if (!screenAnimations) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+            }
+            startActivity(intent);
+            overridePendingTransition(R.anim.slide_in_right, screenAnimations ? R.anim.slide_out_left : 0);
+        });
+
+        View iconPackTintContainer = findViewById(R.id.icon_pack_tint_container);
+        TextView iconPackTintValueTv = iconPackTintContainer.findViewById(R.id.value_text);
+        iconPackTintValueTv.setText(iconPackTint ? "ON" : "OFF");
+        iconPackTintValueTv
+                .setMinWidth(TextWidthHelper.getMaxTextWidthPx(iconPackTintValueTv, new String[] { "ON", "OFF" }));
+
+        View.OnClickListener toggleIconPackTint = v -> {
+            iconPackTint = !iconPackTint;
+            iconPackTintValueTv.setText(iconPackTint ? "ON" : "OFF");
+            prefs.edit().putBoolean(IconPackHelper.PREF_ICON_PACK_TINT, iconPackTint).apply();
+        };
+        ((ImageButton) iconPackTintContainer.findViewById(R.id.btn_minus)).setOnClickListener(toggleIconPackTint);
+        ((ImageButton) iconPackTintContainer.findViewById(R.id.btn_plus)).setOnClickListener(toggleIconPackTint);
 
         View showIconsContainer = findViewById(R.id.show_icons_container);
         TextView showIconsValueTv = showIconsContainer.findViewById(R.id.value_text);
@@ -380,9 +407,27 @@ public class IconSettingsActivity extends BaseSettingsActivity {
         initPagination(this::refreshVisibility);
     }
 
+    private void refreshIconPackRow() {
+        String pack = IconPackHelper.getSelectedPack(this);
+
+        String label = "System default";
+        if (!pack.isEmpty()) {
+            try {
+                PackageManager pm = getPackageManager();
+                label = pm.getApplicationLabel(pm.getApplicationInfo(pack, 0)).toString();
+            } catch (Exception ignored) {
+            }
+        }
+
+        ((TextView) findViewById(R.id.icon_pack_value)).setText(label);
+        findViewById(R.id.icon_pack_tint_layout).setVisibility(pack.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
     private void refreshVisibility() {
         LinearLayout iconOptionsLayout = findViewById(R.id.icon_options_layout);
         iconOptionsLayout.setVisibility(showIcons ? View.VISIBLE : View.GONE);
+
+        refreshIconPackRow();
 
         LinearLayout appNamePositionLayout = findViewById(R.id.app_name_position_layout);
         appNamePositionLayout.setVisibility(showAppNames ? View.VISIBLE : View.GONE);
@@ -408,6 +453,8 @@ public class IconSettingsActivity extends BaseSettingsActivity {
         super.onResume();
         registerReceiver(homeButtonReceiver, new IntentFilter("android.intent.action.CLOSE_SYSTEM_DIALOGS"),
                 Context.RECEIVER_NOT_EXPORTED);
+        refreshIconPackRow();
+        refreshPagination();
     }
 
     @Override

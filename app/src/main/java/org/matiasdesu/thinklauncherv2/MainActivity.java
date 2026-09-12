@@ -68,11 +68,13 @@ import org.matiasdesu.thinklauncherv2.settings.MusicDockSettingsActivity;
 import org.matiasdesu.thinklauncherv2.ui.AppLauncherActivity;
 import org.matiasdesu.thinklauncherv2.ui.AppSelectorActivity;
 import org.matiasdesu.thinklauncherv2.ui.AppShortcutsDialog;
+import org.matiasdesu.thinklauncherv2.ui.IconPickerActivity;
 import org.matiasdesu.thinklauncherv2.ui.MusicDockOptionsDialog;
 import org.matiasdesu.thinklauncherv2.ui.StrokeTextView;
 import org.matiasdesu.thinklauncherv2.ui.ShadowOutlineDrawable;
 import org.matiasdesu.thinklauncherv2.utils.AppNamePositionHelper;
 import org.matiasdesu.thinklauncherv2.utils.DynamicIconHelper;
+import org.matiasdesu.thinklauncherv2.utils.IconPackHelper;
 import org.matiasdesu.thinklauncherv2.utils.HomePagesManager;
 import org.matiasdesu.thinklauncherv2.utils.HomePositionHelper;
 import org.matiasdesu.thinklauncherv2.utils.IconMonochromeHelper;
@@ -205,6 +207,8 @@ public class MainActivity extends Activity {
     private int customAccentColor;
     private boolean calendarPermissionGranted;
     private volatile boolean prefsDirty = true;
+    private String iconPack = "";
+    private int iconEpoch;
     private SharedPreferences.OnSharedPreferenceChangeListener prefsChangeListener;
 
     private BroadcastReceiver homeButtonReceiver = new BroadcastReceiver() {
@@ -1993,6 +1997,18 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             setTheme(R.style.AppTheme);
         }
         super.onCreate(savedInstanceState);
+        // Started before inflation so the appfilter parse overlaps it and the
+        // first draw already has themed icons.
+        iconPack = IconPackHelper.getSelectedPack(this);
+        iconEpoch = DynamicIconHelper.getCacheEpoch();
+        // Large packs take seconds to parse, so the first draw shows stock
+        // icons; repaint once when the map lands rather than blocking on it.
+        IconPackHelper.setLoadListener(() -> runOnUiThread(() -> {
+            DynamicIconHelper.bumpCacheEpoch();
+            iconEpoch = DynamicIconHelper.getCacheEpoch();
+            recreateHome();
+        }));
+        IconPackHelper.ensureLoadedAsync(this);
         BigmeShims.registerUnlockReceiver(this);
         BigmeShims.queryLauncherProvider(this);
         setContentView(R.layout.activity_main);
@@ -2203,6 +2219,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         registerReceiver(homeButtonReceiver, new IntentFilter("android.intent.action.CLOSE_SYSTEM_DIALOGS"),
                 Context.RECEIVER_NOT_EXPORTED);
         gestureHandler.loadApps();
+        dropIconPackIfUninstalled();
         if (customGestureLibrary != null) {
             customGestureLibrary = GestureLibraries.fromFile(new java.io.File(getFilesDir(), "custom_gestures"));
             customGestureLibrary.load();
@@ -2212,6 +2229,20 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             prefsDirty = false;
 
             SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+
+            String newIconPack = prefs.getString(IconPackHelper.PREF_ICON_PACK, "");
+            if (!newIconPack.equals(iconPack)) {
+                iconPack = newIconPack;
+                IconPackHelper.invalidate();
+                IconPackHelper.ensureLoadedAsync(this);
+                DynamicIconHelper.bumpCacheEpoch();
+            }
+            // A pack switch or a per-app override changes the artwork without
+            // changing any pref this block compares, so the epoch is what tells
+            // us to repaint.
+            boolean iconArtworkChanged = DynamicIconHelper.getCacheEpoch() != iconEpoch;
+            iconEpoch = DynamicIconHelper.getCacheEpoch();
+
             int newMaxApps = prefs.getInt("max_apps", 4);
             int newTextSize = prefs.getInt("text_size", 32);
             int newIconSize = prefs.getInt("icon_size", 32);
@@ -2468,6 +2499,13 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
 
             if (wallpaperChanged || themeChanged || layoutChanged) {
                 loadWallpaper();
+            }
+
+            // Only the artwork changed, so none of the branches above redrew the
+            // slots. recreateHome also restores root visibility, which the
+            // block above hides whenever it runs.
+            if (iconArtworkChanged && !layoutChanged && !themeChanged && !textChanged && !wallpaperChanged) {
+                recreateHome();
             }
         }
 
@@ -3021,6 +3059,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     protected void onDestroy() {
         super.onDestroy();
         cancelMusicDockHide();
+        IconPackHelper.setLoadListener(null);
         if (prefsChangeListener != null) {
             getSharedPreferences("prefs", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsChangeListener);
         }
@@ -3050,8 +3089,30 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     private void showAppShortcutsDialog(int slotIndex, java.util.List<ShortcutInfo> shortcuts) {
         new AppShortcutsDialog(this, shortcuts, "Edit",
                 () -> showAppSelector(slotIndex),
-                shortcut -> launchShortcut(shortcut)
+                shortcut -> launchShortcut(shortcut),
+                changeIconCallbackFor(appPackages.get(slotIndex))
         ).show();
+    }
+
+    /**
+     * Only real apps can carry a pack icon, and only when a pack is selected -
+     * otherwise there would be nothing to pick from.
+     */
+    private AppShortcutsDialog.OnChangeIconCallback changeIconCallbackFor(String pkg) {
+        if (!isSlotRealApp(pkg) || IconPackHelper.getSelectedPack(this).isEmpty()) {
+            return null;
+        }
+        final String realPkg = pkg.startsWith("hidden_app_") ? pkg.substring("hidden_app_".length()) : pkg;
+        return () -> openIconPicker(realPkg);
+    }
+
+    private void openIconPicker(String pkg) {
+        Intent intent = new Intent(this, IconPickerActivity.class);
+        intent.putExtra(IconPickerActivity.EXTRA_PACKAGE, pkg);
+        if (getSharedPreferences("prefs", MODE_PRIVATE).getInt("screen_animations", 0) != 1) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+        }
+        startActivity(intent);
     }
 
     private void launchShortcut(ShortcutInfo shortcut) {
@@ -3074,7 +3135,8 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         final int slotIndex = dockSlotIndex;
         new AppShortcutsDialog(this, shortcuts, "Edit",
                 () -> editDockItem(prefix, slotIndex),
-                shortcut -> launchShortcut(shortcut)).show();
+                shortcut -> launchShortcut(shortcut),
+                changeIconCallbackFor(pkg)).show();
     }
 
     private void editDockItem(String prefix, int slotIndex) {
@@ -4068,6 +4130,25 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             result = getResources().getDimensionPixelSize(resourceId);
         }
         return result;
+    }
+
+    /**
+     * Uninstalling the pack changes no preference, so this has to run on every
+     * resume - otherwise the launcher keeps serving icons cached from a pack
+     * that is no longer on the device. Clearing the pref marks prefs dirty,
+     * which repaints.
+     */
+    private void dropIconPackIfUninstalled() {
+        SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+        String selected = prefs.getString(IconPackHelper.PREF_ICON_PACK, "");
+        if (selected.isEmpty() || IconPackHelper.isPackInstalled(this, selected)) {
+            return;
+        }
+
+        prefs.edit().remove(IconPackHelper.PREF_ICON_PACK).apply();
+        iconPack = "";
+        IconPackHelper.invalidate();
+        DynamicIconHelper.bumpCacheEpoch();
     }
 
     private void recreateHome() {

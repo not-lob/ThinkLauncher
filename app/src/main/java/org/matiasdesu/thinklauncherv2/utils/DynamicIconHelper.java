@@ -30,8 +30,26 @@ public class DynamicIconHelper {
     private static final int ICON_CACHE_SIZE = 192;
     private static final LruCache<String, Drawable> ICON_CACHE = new LruCache<>(ICON_CACHE_SIZE);
 
+    /**
+     * Bumped whenever something outside the cache key can change an icon's
+     * artwork: the selected icon pack, a per-app override being set or cleared,
+     * or the pack being uninstalled. Baking that identity into the key instead
+     * would still leave stale entries behind when an override is cleared.
+     */
+    private static volatile int CACHE_EPOCH = 0;
+
     public static void clearIconCache() {
         ICON_CACHE.evictAll();
+    }
+
+    public static void bumpCacheEpoch() {
+        CACHE_EPOCH++;
+        ICON_CACHE.evictAll();
+    }
+
+    /** Lets callers notice that icon artwork changed and repaint. */
+    public static int getCacheEpoch() {
+        return CACHE_EPOCH;
     }
 
     /**
@@ -93,7 +111,7 @@ public class DynamicIconHelper {
     public static Drawable getAppIcon(Context context, String packageName, boolean useDynamic, int theme,
             boolean iconBackground, boolean dynamicColors, boolean invertIconColors, int iconShape,
             boolean forceMonochromeFallback) throws PackageManager.NameNotFoundException {
-        String key = "app|" + packageName + "|" + useDynamic + "|" + theme + "|" + iconBackground
+        String key = CACHE_EPOCH + "|app|" + packageName + "|" + useDynamic + "|" + theme + "|" + iconBackground
                 + "|" + dynamicColors + "|" + invertIconColors + "|" + iconShape
                 + "|" + forceMonochromeFallback;
         Drawable cached = ICON_CACHE.get(key);
@@ -103,7 +121,31 @@ public class DynamicIconHelper {
 
         PackageManager pm = context.getPackageManager();
 
-        Drawable icon = pm.getApplicationIcon(packageName);
+        Drawable icon = IconPackHelper.getIconForPackage(context, packageName);
+        boolean fromPack = icon != null;
+
+        if (icon == null) {
+            icon = pm.getApplicationIcon(packageName);
+        }
+
+        if (fromPack) {
+            int[] colors = getDynamicColors(context, theme, iconBackground, invertIconColors, dynamicColors);
+
+            // Pack artwork is usually a flat bitmap, so it would sail past the
+            // adaptive-icon branch below untinted - and line-art packs are white
+            // on transparent, i.e. invisible on a white e-ink background.
+            boolean tintPackIcon = useDynamic || !iconBackground
+                    || context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+                            .getBoolean(IconPackHelper.PREF_ICON_PACK_TINT, true);
+
+            Drawable packResult = tintPackIcon
+                    ? finishTintedIcon(context, createTintedDrawable(context, icon, colors[0]), icon,
+                            colors[1], iconBackground, iconShape)
+                    : applyShapeIfNeeded(context, icon, iconShape, iconBackground);
+
+            ICON_CACHE.put(key, packResult);
+            return packResult;
+        }
 
         if (useDynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             if (icon instanceof AdaptiveIconDrawable) {
@@ -137,35 +179,10 @@ public class DynamicIconHelper {
                 }
 
                 if (tintedIcon != null) {
-                    if (iconShape != IconShapeHelper.SHAPE_SYSTEM && iconBackground) {
-                        int size = 108;
-                        Drawable shapedIcon = IconShapeHelper.createShapedIcon(context, tintedIcon,
-                                backgroundColor, iconShape, size, false);
-                        if (shapedIcon != null) {
-                            ICON_CACHE.put(key, shapedIcon);
-                            return shapedIcon;
-                        }
-                    }
-
-                    if (!iconBackground) {
-                        float expandFraction = -0.35f;
-                        InsetDrawable expandedIcon = new InsetDrawable(tintedIcon, expandFraction);
-                        ICON_CACHE.put(key, expandedIcon);
-                        return expandedIcon;
-                    }
-
-                    ColorDrawable themedBackground = new ColorDrawable(backgroundColor);
-
-                    AdaptiveIconDrawable twoToneIcon = new AdaptiveIconDrawable(
-                            themedBackground,
-                            tintedIcon);
-
-                    if (icon.getIntrinsicWidth() > 0 && icon.getIntrinsicHeight() > 0) {
-                        twoToneIcon.setBounds(0, 0, icon.getIntrinsicWidth(), icon.getIntrinsicHeight());
-                    }
-
-                    ICON_CACHE.put(key, twoToneIcon);
-                    return twoToneIcon;
+                    Drawable finished = finishTintedIcon(context, tintedIcon, icon, backgroundColor,
+                            iconBackground, iconShape);
+                    ICON_CACHE.put(key, finished);
+                    return finished;
                 }
             }
         }
@@ -173,6 +190,42 @@ public class DynamicIconHelper {
         Drawable result = applyShapeIfNeeded(context, icon, iconShape, iconBackground);
         ICON_CACHE.put(key, result);
         return result;
+    }
+
+    /**
+     * Shared tail of the tinting pipeline: shape mask, or transparent-background
+     * expansion, or a two-tone tile. Both the adaptive-icon path and the icon
+     * pack path funnel through here so pack icons can't drift from stock ones.
+     */
+    private static Drawable finishTintedIcon(Context context, Drawable tintedIcon, Drawable original,
+            int backgroundColor, boolean iconBackground, int iconShape) {
+        if (iconShape != IconShapeHelper.SHAPE_SYSTEM && iconBackground) {
+            int size = 108;
+            Drawable shapedIcon = IconShapeHelper.createShapedIcon(context, tintedIcon,
+                    backgroundColor, iconShape, size, false);
+            if (shapedIcon != null) {
+                return shapedIcon;
+            }
+        }
+
+        if (!iconBackground) {
+            float expandFraction = -0.35f;
+            return new InsetDrawable(tintedIcon, expandFraction);
+        }
+
+        ColorDrawable themedBackground = new ColorDrawable(backgroundColor);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            AdaptiveIconDrawable twoToneIcon = new AdaptiveIconDrawable(themedBackground, tintedIcon);
+
+            if (original.getIntrinsicWidth() > 0 && original.getIntrinsicHeight() > 0) {
+                twoToneIcon.setBounds(0, 0, original.getIntrinsicWidth(), original.getIntrinsicHeight());
+            }
+
+            return twoToneIcon;
+        }
+
+        return new LayerDrawable(new Drawable[] { themedBackground, new InsetDrawable(tintedIcon, 0.25f) });
     }
 
     private static Drawable createTintedDrawable(Context context, Drawable source, int iconColor) {
@@ -425,7 +478,7 @@ public class DynamicIconHelper {
      */
     public static Drawable createSpecialIcon(Context context, int drawableResId, int theme, boolean iconBackground,
             boolean dynamicColors, boolean invertIconColors, int iconShape) {
-        String key = "special|" + drawableResId + "|" + theme + "|" + iconBackground
+        String key = CACHE_EPOCH + "|special|" + drawableResId + "|" + theme + "|" + iconBackground
                 + "|" + dynamicColors + "|" + invertIconColors + "|" + iconShape;
         Drawable cached = ICON_CACHE.get(key);
         if (cached != null) {

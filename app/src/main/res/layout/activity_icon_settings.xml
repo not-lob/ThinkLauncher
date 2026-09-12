@@ -106,6 +106,92 @@
                     android:id="@+id/icon_options_layout">
 
                     <LinearLayout
+                        android:id="@+id/icon_pack_button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_margin="16dp"
+                        android:clickable="true">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/app_icons"
+                            android:layout_marginEnd="8dp"
+                            android:tint="?attr/text_color" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Icon Pack:"
+                            android:textColor="?attr/text_color"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <RelativeLayout
+                            android:layout_width="160dp"
+                            android:layout_height="wrap_content">
+
+                            <ImageView
+                                android:id="@+id/icon_pack_arrow"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:src="@drawable/forward_arrow"
+                                android:layout_alignParentRight="true"
+                                android:layout_centerVertical="true"
+                                android:padding="12dp"
+                                android:tint="?attr/text_color" />
+
+                            <TextView
+                                android:id="@+id/icon_pack_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentLeft="true"
+                                android:layout_toLeftOf="@id/icon_pack_arrow"
+                                android:layout_centerVertical="true"
+                                android:gravity="end"
+                                android:maxLines="1"
+                                android:ellipsize="end"
+                                android:text="System default"
+                                android:textColor="?attr/text_color"
+                                android:textSize="16sp" />
+
+                        </RelativeLayout>
+
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/icon_pack_tint_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_margin="16dp">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/monochrome_icons"
+                            android:layout_marginEnd="8dp"
+                            android:tint="?attr/text_color" />
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Tint Pack Icons:"
+                            android:textColor="?attr/text_color"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <include layout="@layout/plus_minus_layout"
+                            android:id="@+id/icon_pack_tint_container" />
+
+                    </LinearLayout>
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
