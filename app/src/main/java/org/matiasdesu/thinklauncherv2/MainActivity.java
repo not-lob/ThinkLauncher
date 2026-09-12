@@ -166,7 +166,6 @@ public class MainActivity extends Activity {
     private TextView calendarEventView;
     private int calendarEventFontSize;
     private CalendarEventSummary calendarEventSummary;
-    private int homeStackAnchorId = View.NO_ID;
     private int homeContentBottomId = View.NO_ID;
     private final org.matiasdesu.thinklauncherv2.utils.homewidget.HomeWidgetHost homeWidgetHost =
             new org.matiasdesu.thinklauncherv2.utils.homewidget.HomeWidgetHost(this);
@@ -194,6 +193,14 @@ public class MainActivity extends Activity {
     private final Handler musicDockHideHandler = new Handler(Looper.getMainLooper());
     private Runnable musicDockHideRunnable;
     private static final int REQUEST_EDIT_DOCK_BASE = 10000;
+    /**
+     * Slot id for the clock/date/calendar-event block in home_stack_order - see
+     * {@link #createHomeWidgets} and {@link #parseStackOrder}. The block's own internal ordering
+     * (date-above-time vs time-above-date) stays governed by date_vertical_position; this id only
+     * places the block as a whole relative to the pluggable widgets.
+     */
+    private static final String STACK_SLOT_CLOCK_DATE = "clock_date";
+    private static final String DEFAULT_STACK_ORDER = "clock_date,status_row,now_reading,home_calendar";
     private String pendingDockPrefix = null;
     private int statusBarInset = 0;
     private int navBarInset = 0;
@@ -726,12 +733,61 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     }
 
     /**
-     * Builds the clock/date/calendar-event stack and, once it settles, hands the trailing view id
-     * to {@link #homeWidgetHost} so the pluggable home widgets (status row, now reading, calendar)
-     * chain below it. Renamed from createTimeViews: the calendar-event line already made this the
-     * de-facto home-widget renderer, so new widgets extend it rather than duplicating it.
+     * Builds the whole home stack - the clock/date/calendar-event block and the pluggable widgets
+     * (status row, now reading, calendar) - in the user-configured order (home_stack_order),
+     * chaining each item below the previous one with home_stack_spacing between them. Renamed from
+     * createTimeViews: the calendar-event line already made this the de-facto home-widget
+     * renderer, so new widgets extend it rather than duplicating it.
      */
     private void createHomeWidgets(int bgColor, int textColor) {
+        SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+        int spacingPx = (int) (prefs.getInt("home_stack_spacing", 0) * getResources().getDisplayMetrics().density);
+        List<String> order = parseStackOrder(prefs.getString("home_stack_order", DEFAULT_STACK_ORDER));
+
+        homeWidgetHost.beginBuild();
+        int prevId = View.NO_ID;
+        for (String slot : order) {
+            if (STACK_SLOT_CLOCK_DATE.equals(slot)) {
+                prevId = createClockDateBlock(prevId, spacingPx, bgColor, textColor);
+            } else {
+                prevId = homeWidgetHost.createOne(slot, rootLayout, prevId, spacingPx, prefs, bgColor, textColor);
+            }
+        }
+        homeContentBottomId = prevId;
+    }
+
+    /**
+     * Every known home-stack slot id, in the built-in default order. A user's saved
+     * home_stack_order can predate a slot added in a later version (or, in principle, name one
+     * that no longer exists) - sanitize() reconciles that by keeping only known ids and appending
+     * any missing ones at the end, so a new slot always shows up rather than silently vanishing.
+     */
+    private static List<String> parseStackOrder(String raw) {
+        String[] known = DEFAULT_STACK_ORDER.split(",");
+        List<String> result = new ArrayList<>();
+        for (String id : raw.split(",")) {
+            id = id.trim();
+            for (String k : known) {
+                if (k.equals(id) && !result.contains(id)) {
+                    result.add(id);
+                    break;
+                }
+            }
+        }
+        for (String k : known) {
+            if (!result.contains(k)) result.add(k);
+        }
+        return result;
+    }
+
+    /**
+     * Builds the clock/date/calendar-event block anchored below {@code anchorId} (or
+     * ALIGN_PARENT_TOP if {@code anchorId} is View.NO_ID), returning the block's own trailing view
+     * id - or {@code anchorId} unchanged if neither the clock nor the date is enabled. The block's
+     * internal ordering (date-above-time vs time-above-date) is still governed by
+     * date_vertical_position; only where the block as a whole sits in the home stack is new.
+     */
+    private int createClockDateBlock(int anchorId, int spacingPx, int bgColor, int textColor) {
         boolean showTime = timePosition == 1;
         boolean showDate = datePosition != 0;
         boolean showCalendarEvents = dateCalendarEvents == 1 && showDate && hasCalendarPermission();
@@ -755,7 +811,12 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
 
             RelativeLayout.LayoutParams dateParams = new RelativeLayout.LayoutParams(
                     RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-            dateParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+            if (anchorId == View.NO_ID) {
+                dateParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+            } else {
+                dateParams.addRule(RelativeLayout.BELOW, anchorId);
+                dateParams.topMargin = spacingPx;
+            }
             dateParams.addRule(getRelativeHorizontalRule(dateHorizontalPosition));
             if ((showSettingsButton == 1 || showSearchButton == 1) && dateHorizontalPosition == 2) {
                 int maxBtnSize = Math.max(showSettingsButton == 1 ? settingsButtonSize : 0,
@@ -819,7 +880,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 }
                 rootLayout.addView(timeView, timeParams);
             }
-            homeStackAnchorId = showTime ? timeView.getId()
+            return showTime ? timeView.getId()
                     : showCalendarEvents ? calendarEventView.getId()
                     : dateView.getId();
         } else {
@@ -839,7 +900,12 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 RelativeLayout.LayoutParams timeParams = new RelativeLayout.LayoutParams(
                         RelativeLayout.LayoutParams.WRAP_CONTENT,
                         RelativeLayout.LayoutParams.WRAP_CONTENT);
-                timeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                if (anchorId == View.NO_ID) {
+                    timeParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                } else {
+                    timeParams.addRule(RelativeLayout.BELOW, anchorId);
+                    timeParams.topMargin = spacingPx;
+                }
                 timeParams.addRule(getRelativeHorizontalRule(timeHorizontalPosition));
                 if ((showSettingsButton == 1 || showSearchButton == 1) && timeHorizontalPosition == 2) {
                     int maxBtnSize = Math.max(showSettingsButton == 1 ? settingsButtonSize : 0,
@@ -870,8 +936,11 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                         RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
                 if (showTime) {
                     dateParams.addRule(RelativeLayout.BELOW, timeView.getId());
-                } else {
+                } else if (anchorId == View.NO_ID) {
                     dateParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                } else {
+                    dateParams.addRule(RelativeLayout.BELOW, anchorId);
+                    dateParams.topMargin = spacingPx;
                 }
                 dateParams.addRule(getRelativeHorizontalRule(dateHorizontalPosition));
                 if ((showSettingsButton == 1 || showSearchButton == 1) && dateHorizontalPosition == 2) {
@@ -911,13 +980,11 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 }
                 rootLayout.addView(calendarEventView, eventParams);
             }
-            homeStackAnchorId = showCalendarEvents ? calendarEventView.getId()
+            return showCalendarEvents ? calendarEventView.getId()
                     : showDate ? dateView.getId()
                     : showTime ? timeView.getId()
-                    : View.NO_ID;
+                    : anchorId;
         }
-
-        homeContentBottomId = homeWidgetHost.createAll(rootLayout, homeStackAnchorId, bgColor, textColor);
     }
 
     private void createSettingsButton(int bgColor, int textColor) {

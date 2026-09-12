@@ -44,39 +44,50 @@ public class HomeWidgetHost {
     }
 
     /**
-     * Creates every enabled widget's view and chains it below {@code anchorId} (or
-     * ALIGN_PARENT_TOP if {@code anchorId} is View.NO_ID, i.e. the clock/date stack is empty).
+     * Clears the previous build's views, ready for a fresh sequence of {@link #createOne} calls.
+     * Callers building the whole home stack in a user-configured order (MainActivity's
+     * home_stack_order) call this once, then createOne per slot in that order - unlike the old
+     * single createAll() batch, widgets are no longer always built (and thus always positioned)
+     * as one fixed-order group.
+     */
+    public void beginBuild() {
+        createdViews.clear();
+    }
+
+    /**
+     * Creates one widget's view (if enabled) and chains it below {@code anchorId} (or
+     * ALIGN_PARENT_TOP if {@code anchorId} is View.NO_ID, i.e. it's the first thing in the stack),
+     * with {@code spacingPx} as the gap when it's not first. Returns the new trailing view id, or
+     * {@code anchorId} unchanged if the widget is disabled/unknown - so callers can thread the
+     * return value straight into the next createOne/anchor without special-casing "nothing built".
      * Does not load data - callers trigger that once per build via {@link #loadAllAsync}.
      */
-    public int createAll(RelativeLayout root, int anchorId, int bgColor, int textColor) {
-        createdViews.clear();
-        SharedPreferences prefs = host.getSharedPreferences("prefs", Context.MODE_PRIVATE);
-        int prevId = anchorId;
+    public int createOne(String widgetId, RelativeLayout root, int anchorId, int spacingPx,
+            SharedPreferences prefs, int bgColor, int textColor) {
         for (HomeWidget widget : widgets) {
-            if (!widget.isEnabled(prefs)) continue;
+            if (!widget.id().equals(widgetId)) continue;
+            if (!widget.isEnabled(prefs)) return anchorId;
             View view = widget.createView(host, root, prefs, bgColor, textColor);
-            if (view == null) continue;
+            if (view == null) return anchorId;
             if (view.getId() == View.NO_ID) {
                 view.setId(View.generateViewId());
             }
             RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
                     RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-            if (prevId == View.NO_ID) {
+            if (anchorId == View.NO_ID) {
                 lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
             } else {
-                lp.addRule(RelativeLayout.BELOW, prevId);
+                lp.addRule(RelativeLayout.BELOW, anchorId);
+                lp.topMargin = spacingPx;
             }
             root.addView(view, lp);
-            prevId = view.getId();
             createdViews.put(widget.id(), view);
+            return view.getId();
         }
-        // The trailing id (either the last widget added, or the passed-in anchor unchanged if no
-        // widget was enabled) - callers use this to push whatever comes next (the app grid) below
-        // the whole stack instead of just below the clock/date block.
-        return prevId;
+        return anchorId;
     }
 
-    /** True if createAll actually built at least one widget view. */
+    /** True if the last build actually created at least one widget view. */
     public boolean hasVisibleWidgets() {
         return !createdViews.isEmpty();
     }
@@ -133,6 +144,13 @@ public class HomeWidgetHost {
         hasSnapshot = true;
     }
 
+    /**
+     * Global (not per-widget) prefs that affect how the whole home stack is built, e.g. widget
+     * order and spacing - tracked here so a change to either also folds into MainActivity's
+     * layoutChanged OR-chain via prefsChanged, with no hand-written diff code (see prefsChanged).
+     */
+    private static final String[] GLOBAL_PREF_KEYS = { "home_stack_order", "home_stack_spacing" };
+
     private int computeSignature(SharedPreferences prefs) {
         int signature = 0;
         for (HomeWidget widget : widgets) {
@@ -141,6 +159,10 @@ public class HomeWidgetHost {
                 Object value = prefs.getAll().get(key);
                 signature = 31 * signature + (value == null ? 0 : value.hashCode());
             }
+        }
+        for (String key : GLOBAL_PREF_KEYS) {
+            Object value = prefs.getAll().get(key);
+            signature = 31 * signature + (value == null ? 0 : value.hashCode());
         }
         return signature;
     }
