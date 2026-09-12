@@ -3,16 +3,20 @@ package org.matiasdesu.thinklauncherv2.utils.homewidget;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.drawable.Drawable;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
+import org.matiasdesu.thinklauncherv2.R;
 import org.matiasdesu.thinklauncherv2.utils.BatteryUtils;
 import org.matiasdesu.thinklauncherv2.utils.NetworkStatusHelper;
 import org.matiasdesu.thinklauncherv2.views.BatteryLevelView;
-import org.matiasdesu.thinklauncherv2.views.WifiLevelView;
 
 /**
  * Battery-icon + percent + WiFi-signal status row, styled after the reference "98% | date" line but
@@ -30,7 +34,7 @@ public class StatusRowWidget implements HomeWidget {
     private LinearLayout container;
     private BatteryLevelView batteryIcon;
     private TextView percentText;
-    private WifiLevelView wifiIcon;
+    private ImageView wifiIcon;
     private int horizontalPosition;
     private int textColor;
 
@@ -89,14 +93,15 @@ public class StatusRowWidget implements HomeWidget {
             container.addView(percentText, lp);
         }
         if (showWifi) {
-            wifiIcon = new WifiLevelView(host);
-            wifiIcon.setColor(textColor);
-            // WifiLevelView's wedge is bounded by both width and height (see its onDraw) - a
-            // square box makes width the limiting factor, so the wedge falls short of the full
-            // icon height next to the battery gauge. A ~1.42x-wide box (1/sin(45deg)) lets height
-            // be the limiting factor instead, so it fills the same vertical space the battery does.
-            container.addView(wifiIcon, new LinearLayout.LayoutParams(
-                    (int) (iconSizePx * 1.42f), iconSizePx));
+            wifiIcon = new ImageView(host);
+            wifiIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            Drawable wifiDrawable = ContextCompat.getDrawable(host, R.drawable.wifi_signal);
+            if (wifiDrawable != null) {
+                wifiDrawable = wifiDrawable.mutate();
+                wifiDrawable.setTint(textColor);
+                wifiIcon.setImageDrawable(wifiDrawable);
+            }
+            container.addView(wifiIcon, new LinearLayout.LayoutParams(iconSizePx, iconSizePx));
         }
 
         RelativeLayout.LayoutParams rlp = new RelativeLayout.LayoutParams(
@@ -127,7 +132,11 @@ public class StatusRowWidget implements HomeWidget {
         if (wifiIcon != null) {
             boolean offline = data.network.state != NetworkStatusHelper.State.WIFI
                     && data.network.state != NetworkStatusHelper.State.CELLULAR;
-            wifiIcon.setState(data.network.wifiLevel, offline);
+            // The glyph itself doesn't have separate lightable bands (it's one fixed shape), so
+            // signal strength is conveyed by fading it instead: faint when offline, ramping up to
+            // full opacity at max signal.
+            int alpha = offline ? 60 : 90 + (data.network.wifiLevel * 165 / 4);
+            wifiIcon.setImageAlpha(alpha);
         }
     }
 

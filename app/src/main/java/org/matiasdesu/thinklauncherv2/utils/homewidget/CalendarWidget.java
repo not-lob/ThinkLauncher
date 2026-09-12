@@ -112,6 +112,24 @@ public class CalendarWidget implements HomeWidget {
             monthSection = new LinearLayout(host);
             monthSection.setOrientation(LinearLayout.VERTICAL);
 
+            // Fixed-size square cells rather than weight-stretched (0dp + weight) ones: a
+            // LinearLayout with weighted 0dp children still expands to fill an ancestor's
+            // available width even when every LayoutParams in the chain says WRAP_CONTENT, so the
+            // grid was always stretching edge-to-edge and squashing each day into a flat rectangle
+            // instead of a square. Fixed widths keep the grid at its natural 7*cellSize size.
+            // MATCH_PARENT has the exact same problem (it resolves against the nearest ancestor's
+            // available space, not this section's own sibling-determined width) so the rule below
+            // and the weekday columns get explicit pixel widths tied to cellSize too, instead.
+            int cellSizeDp = prefs.getInt("home_calendar_cell_size", 32);
+            int cellSize = (int) (cellSizeDp * density);
+            // Font Size and Calendar Size are two independent controls, but a cell can never be
+            // smaller than what its own day-number text needs - otherwise raising the font size
+            // just clips inside a cell that never grows to match. This also means bumping Font
+            // Size alone grows the whole grid once it exceeds Calendar Size's floor.
+            int minCellSizeForFont = Math.round(fontSize * density * 2.2f);
+            cellSize = Math.max(cellSize, minCellSizeForFont);
+            int gridWidth = cellSize * 7;
+
             monthTitle = new StrokeTextView(host);
             monthTitle.setTextColor(textColor);
             monthTitle.setTextSize(fontSize + 6);
@@ -121,11 +139,14 @@ public class CalendarWidget implements HomeWidget {
 
             View rule = new View(host);
             rule.setBackgroundColor(textColor);
-            LinearLayout.LayoutParams ruleLp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, Math.max(1, (int) density));
+            LinearLayout.LayoutParams ruleLp = new LinearLayout.LayoutParams(gridWidth, Math.max(1, (int) density));
             ruleLp.topMargin = (int) (4 * density);
             ruleLp.bottomMargin = (int) (8 * density);
             monthSection.addView(rule, ruleLp);
+
+            // Weekday labels scale with the cell size, not the (unrelated) day-number font size
+            // pref - otherwise a 3-letter label like "SUN" overflows a small cell's column.
+            float weekdayTextSizeSp = Math.max(8f, cellSizeDp * 0.32f);
 
             weekdayRow = new LinearLayout(host);
             weekdayRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -134,14 +155,14 @@ public class CalendarWidget implements HomeWidget {
                 wd.setText(label);
                 wd.setTextColor(textColor);
                 wd.setAlpha(0.6f);
-                wd.setTextSize(fontSize - 2);
+                wd.setTextSize(weekdayTextSizeSp);
                 wd.setGravity(Gravity.CENTER);
-                weekdayRow.addView(wd, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                wd.setSingleLine(true);
+                weekdayRow.addView(wd, new LinearLayout.LayoutParams(cellSize, LinearLayout.LayoutParams.WRAP_CONTENT));
             }
             monthSection.addView(weekdayRow);
 
             gridDays = MonthGridHelper.buildGridDays(currentMonth);
-            int cellSize = (int) (prefs.getInt("home_calendar_cell_size", 32) * density);
             dayCells.clear();
             for (int row = 0; row < 6; row++) {
                 LinearLayout rowLayout = new LinearLayout(host);
@@ -156,7 +177,7 @@ public class CalendarWidget implements HomeWidget {
                             && day.get(Calendar.YEAR) == currentMonth.get(Calendar.YEAR);
                     dayNumber.setAlpha(inMonth ? 1f : 0.35f);
                     dayNumber.setTextColor(textColor);
-                    rowLayout.addView(dayNumber, new LinearLayout.LayoutParams(0, cellSize, 1f));
+                    rowLayout.addView(dayNumber, new LinearLayout.LayoutParams(cellSize, cellSize));
                     dayCells.add(dayNumber);
                 }
                 monthSection.addView(rowLayout);
