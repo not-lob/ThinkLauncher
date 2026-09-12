@@ -1986,6 +1986,19 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 topView = calendarEventView != null ? calendarEventView : dateView;
             }
         }
+        // If every visible clock/date/widget item is pinned to one edge and the app grid is
+        // pinned to the other, there is free horizontal space beside the stack: let the grid sit
+        // there instead of below it. getSideBySideStackSide() returns -1 whenever that isn't
+        // safely true (mixed/centered stack, apps centered, multi-column grid, etc).
+        int stackSide = getSideBySideStackSide();
+        if (stackSide != -1) {
+            mainParams.width = RelativeLayout.LayoutParams.WRAP_CONTENT;
+            mainParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+            mainParams.addRule(homeAlignment == 0 ? RelativeLayout.ALIGN_PARENT_LEFT : RelativeLayout.ALIGN_PARENT_RIGHT);
+            mainLayout.setLayoutParams(mainParams);
+            checkSideBySideFits(stackSide);
+            return;
+        }
         // homeContentBottomId is the trailing id of the whole clock/date + home-widgets stack (see
         // createHomeWidgets/HomeWidgetHost.createAll) - preferred over topView so the app grid sits
         // below any enabled widgets instead of overlapping them.
@@ -2003,6 +2016,82 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             mainParams.addRule(RelativeLayout.CENTER_IN_PARENT);
         }
         mainLayout.setLayoutParams(mainParams);
+    }
+
+    /**
+     * Returns the single horizontal side (0=left, 2=right) that every currently visible
+     * clock/date/widget item is pinned to, provided it's the opposite side from the app grid's own
+     * homeAlignment - or -1 if side-by-side placement isn't safely applicable (nothing in the
+     * stack, the stack is mixed/centered, the apps are centered, or a weighted multi-column grid
+     * that needs mainLayout's real width to divide into columns).
+     */
+    private int getSideBySideStackSide() {
+        if (homeColumns > 1) return -1;
+        if (homeAlignment != 0 && homeAlignment != 2) return -1;
+
+        boolean showTime = timePosition == 1;
+        boolean showDate = datePosition != 0;
+        boolean showCalendarEvents = dateCalendarEvents == 1 && showDate && hasCalendarPermission();
+
+        Integer stackSide = null;
+        List<Integer> positions = new ArrayList<>();
+        if (showTime) positions.add(timeHorizontalPosition);
+        if (showDate) positions.add(dateHorizontalPosition);
+        if (showCalendarEvents) positions.add(dateHorizontalPosition);
+        positions.addAll(homeWidgetHost.getVisibleHorizontalPositions());
+
+        for (int pos : positions) {
+            if (stackSide == null) {
+                stackSide = pos;
+            } else if (stackSide != pos) {
+                return -1;
+            }
+        }
+        if (stackSide == null || stackSide == 1 || stackSide == homeAlignment) return -1;
+        return stackSide;
+    }
+
+    /**
+     * After layout settles, verifies the side-by-side placement set up in adjustMainLayoutPosition
+     * didn't actually collide with the stack (e.g. a long "now reading" title or large clock font
+     * pushing past the grid's edge) and falls back to stacking below it if so.
+     */
+    private void checkSideBySideFits(int stackSide) {
+        rootLayout.post(() -> {
+            if (mainLayout == null || !(mainLayout.getLayoutParams() instanceof RelativeLayout.LayoutParams)) return;
+            RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) mainLayout.getLayoutParams();
+            if (lp.width != RelativeLayout.LayoutParams.WRAP_CONTENT) return; // already rebuilt/fell back
+
+            List<View> stackViews = new ArrayList<>();
+            if (timeView != null && timeView.getParent() == rootLayout) stackViews.add(timeView);
+            if (dateView != null && dateView.getParent() == rootLayout) stackViews.add(dateView);
+            if (calendarEventView != null && calendarEventView.getParent() == rootLayout) stackViews.add(calendarEventView);
+            stackViews.addAll(homeWidgetHost.getVisibleViews());
+
+            Integer stackEdge = null;
+            for (View v : stackViews) {
+                if (v.getWidth() == 0) continue;
+                int edge = stackSide == 0 ? v.getRight() : v.getLeft();
+                if (stackEdge == null) {
+                    stackEdge = edge;
+                } else {
+                    stackEdge = stackSide == 0 ? Math.max(stackEdge, edge) : Math.min(stackEdge, edge);
+                }
+            }
+            if (stackEdge == null) return;
+
+            int gapPx = (int) (12 * getResources().getDisplayMetrics().density);
+            int gridEdge = stackSide == 0 ? mainLayout.getLeft() : mainLayout.getRight();
+            boolean fits = stackSide == 0 ? (gridEdge - stackEdge >= gapPx) : (stackEdge - gridEdge >= gapPx);
+            if (!fits) {
+                RelativeLayout.LayoutParams fallback = new RelativeLayout.LayoutParams(
+                        RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
+                if (homeContentBottomId != View.NO_ID) {
+                    fallback.addRule(RelativeLayout.BELOW, homeContentBottomId);
+                }
+                mainLayout.setLayoutParams(fallback);
+            }
+        });
     }
 
     @Override

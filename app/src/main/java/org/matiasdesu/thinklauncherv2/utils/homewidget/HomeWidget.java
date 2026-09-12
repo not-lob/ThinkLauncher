@@ -43,6 +43,13 @@ public interface HomeWidget {
     /** Re-apply left/right home padding after a padding/inset change. */
     void applyInsets(int homePaddingLeftPx, int homePaddingRightPx);
 
+    /**
+     * This widget's currently configured horizontal position (0=left, 1=center, 2=right), as set
+     * by the most recent {@link #createView}. Used by MainActivity to decide whether the app grid
+     * can sit beside the widget stack instead of below it.
+     */
+    int horizontalPosition();
+
     /** The view most recently created by createView, or null if not currently built. */
     View getView();
 }

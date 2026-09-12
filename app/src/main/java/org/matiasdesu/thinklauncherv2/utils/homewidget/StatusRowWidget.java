@@ -154,4 +154,7 @@ public class StatusRowWidget implements HomeWidget {
 
     @Override
     public View getView() { return container; }
+
+    @Override
+    public int horizontalPosition() { return horizontalPosition; }
 }

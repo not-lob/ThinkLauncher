@@ -81,6 +81,22 @@ public class HomeWidgetHost {
         return !createdViews.isEmpty();
     }
 
+    /** The configured horizontalPosition() of every currently built widget. */
+    public List<Integer> getVisibleHorizontalPositions() {
+        List<Integer> positions = new ArrayList<>();
+        for (HomeWidget widget : widgets) {
+            if (createdViews.containsKey(widget.id())) {
+                positions.add(widget.horizontalPosition());
+            }
+        }
+        return positions;
+    }
+
+    /** Every currently built widget's view, for callers that need to measure the whole stack. */
+    public List<View> getVisibleViews() {
+        return new ArrayList<>(createdViews.values());
+    }
+
     /** Removes every currently-built widget view from root, ready for a fresh createAll. */
     public void teardown(RelativeLayout root) {
         for (View view : createdViews.values()) {
