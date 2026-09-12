@@ -12,7 +12,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.pm.LauncherApps;
 import android.content.pm.ShortcutInfo;
-import android.database.Cursor;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.gesture.Gesture;
@@ -27,7 +26,6 @@ import android.media.MediaMetadata;
 import android.media.session.MediaController;
 import android.media.session.MediaSessionManager;
 import android.media.session.PlaybackState;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -168,6 +166,10 @@ public class MainActivity extends Activity {
     private TextView calendarEventView;
     private int calendarEventFontSize;
     private CalendarEventSummary calendarEventSummary;
+    private int homeStackAnchorId = View.NO_ID;
+    private int homeContentBottomId = View.NO_ID;
+    private final org.matiasdesu.thinklauncherv2.utils.homewidget.HomeWidgetHost homeWidgetHost =
+            new org.matiasdesu.thinklauncherv2.utils.homewidget.HomeWidgetHost(this);
     private RelativeLayout rootLayout;
     private LinearLayout mainLayout;
     private HomePagesManager homePagesManager;
@@ -723,7 +725,13 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         }
     }
 
-    private void createTimeViews(int bgColor, int textColor) {
+    /**
+     * Builds the clock/date/calendar-event stack and, once it settles, hands the trailing view id
+     * to {@link #homeWidgetHost} so the pluggable home widgets (status row, now reading, calendar)
+     * chain below it. Renamed from createTimeViews: the calendar-event line already made this the
+     * de-facto home-widget renderer, so new widgets extend it rather than duplicating it.
+     */
+    private void createHomeWidgets(int bgColor, int textColor) {
         boolean showTime = timePosition == 1;
         boolean showDate = datePosition != 0;
         boolean showCalendarEvents = dateCalendarEvents == 1 && showDate && hasCalendarPermission();
@@ -811,6 +819,9 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 }
                 rootLayout.addView(timeView, timeParams);
             }
+            homeStackAnchorId = showTime ? timeView.getId()
+                    : showCalendarEvents ? calendarEventView.getId()
+                    : dateView.getId();
         } else {
 
             if (showTime) {
@@ -900,7 +911,13 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 }
                 rootLayout.addView(calendarEventView, eventParams);
             }
+            homeStackAnchorId = showCalendarEvents ? calendarEventView.getId()
+                    : showDate ? dateView.getId()
+                    : showTime ? timeView.getId()
+                    : View.NO_ID;
         }
+
+        homeContentBottomId = homeWidgetHost.createAll(rootLayout, homeStackAnchorId, bgColor, textColor);
     }
 
     private void createSettingsButton(int bgColor, int textColor) {
@@ -1969,7 +1986,12 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 topView = calendarEventView != null ? calendarEventView : dateView;
             }
         }
-        if (topView != null) {
+        // homeContentBottomId is the trailing id of the whole clock/date + home-widgets stack (see
+        // createHomeWidgets/HomeWidgetHost.createAll) - preferred over topView so the app grid sits
+        // below any enabled widgets instead of overlapping them.
+        if (homeContentBottomId != View.NO_ID) {
+            mainParams.addRule(RelativeLayout.BELOW, homeContentBottomId);
+        } else if (topView != null) {
             mainParams.addRule(RelativeLayout.BELOW, topView.getId());
         } else if (showSettingsButton == 1 || showSearchButton == 1) {
             if (showSearchButton == 1) {
@@ -2157,9 +2179,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             recreateHome();
         });
 
-        if (timePosition == 1 || datePosition != 0) {
-            createTimeViews(bgColor, textColor);
-        }
+        createHomeWidgets(bgColor, textColor);
 
         createSettingsButton(bgColor, textColor);
         createSearchButton(bgColor, textColor);
@@ -2181,6 +2201,8 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
 
         prefsChangeListener = (sharedPreferences, key) -> prefsDirty = true;
         getSharedPreferences("prefs", MODE_PRIVATE).registerOnSharedPreferenceChangeListener(prefsChangeListener);
+        homeWidgetHost.snapshotPrefs(getSharedPreferences("prefs", MODE_PRIVATE));
+        homeWidgetHost.loadAllAsync(this);
         updateServiceComponents();
     }
 
@@ -2340,7 +2362,8 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                     || !newClockAppPkg.equals(clockAppPkg) || !newDateAppPkg.equals(dateAppPkg)
                     || newSettingsButtonColor != settingsButtonColor || newSearchButtonColor != searchButtonColor
                     || wallpaperChanged
-                    || (newDateCalendarEvents == 1 && calendarPermissionChanged);
+                    || (newDateCalendarEvents == 1 && calendarPermissionChanged)
+                    || homeWidgetHost.prefsChanged(prefs);
             boolean onlyAlignmentChanged = (newHomeAlignment != homeAlignment
                     || newHomeVerticalAlignment != homeVerticalAlignment)
                     && !(newMaxApps != maxApps || newHomeColumns != homeColumns || newHomePages != homePages
@@ -2495,6 +2518,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         refreshAppBar();
         refreshDock();
         refreshMusicDock();
+        homeWidgetHost.loadAllAsync(this);
         FontHelper.applyToViewTree(this, rootLayout);
         applyWindowInsetsToUI(statusBarInset, navBarInset);
         updateServiceComponents();
@@ -2553,40 +2577,13 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     private CalendarEventSummary getNextCalendarEvent() {
         long now = System.currentTimeMillis();
         long end = now + 24L * 60L * 60L * 1000L;
-        Uri.Builder builder = CalendarContract.Instances.CONTENT_URI.buildUpon();
-        ContentUris.appendId(builder, now);
-        ContentUris.appendId(builder, end);
-
-        String[] projection = {
-                CalendarContract.Instances.EVENT_ID,
-                CalendarContract.Instances.TITLE,
-                CalendarContract.Instances.BEGIN,
-                CalendarContract.Instances.END,
-                CalendarContract.Instances.ALL_DAY
-        };
-
-        String selection = CalendarContract.Instances.BEGIN + ">=? AND "
-            + CalendarContract.Instances.BEGIN + "<=?";
-        String[] args = { String.valueOf(now), String.valueOf(end) };
-        String sortOrder = CalendarContract.Instances.BEGIN + " ASC";
-
-        try (Cursor cursor = getContentResolver().query(builder.build(), projection, selection, args, sortOrder)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                long id = cursor.getLong(0);
-                String title = cursor.getString(1);
-                long begin = cursor.getLong(2);
-                long eventEnd = cursor.getLong(3);
-                boolean allDay = cursor.getInt(4) == 1;
-                if (title == null || title.trim().isEmpty()) {
-                    title = "Untitled event";
-                }
-                return new CalendarEventSummary(id, title, begin, eventEnd, allDay);
-            }
-        } catch (SecurityException e) {
-            return null;
-        }
-
-        return null;
+        // Delegates to the shared query helper (also used by CalendarWidget) rather than
+        // duplicating the Instances query here; +1 keeps the original inclusive "<=" upper bound.
+        java.util.List<org.matiasdesu.thinklauncherv2.utils.CalendarEventsHelper.CalendarEvent> events =
+                org.matiasdesu.thinklauncherv2.utils.CalendarEventsHelper.query(this, now, end + 1, 1);
+        if (events.isEmpty()) return null;
+        org.matiasdesu.thinklauncherv2.utils.CalendarEventsHelper.CalendarEvent event = events.get(0);
+        return new CalendarEventSummary(event.id, event.title, event.begin, event.end, event.allDay);
     }
 
     private String formatCalendarEventText(CalendarEventSummary event) {
@@ -2974,14 +2971,13 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             rootLayout.removeView(searchButton);
             searchButton = null;
         }
+        homeWidgetHost.teardown(rootLayout);
         mainLayout.removeAllViews();
         int totalApps = homeColumns * maxApps;
         appSlots = new LinearLayout[totalApps];
         int bgColor = ThemeUtils.getBgColor(theme, this);
         this.textColor = ThemeUtils.getTextColor(theme, this);
-        if (timePosition == 1 || datePosition != 0) {
-            createTimeViews(bgColor, textColor);
-        }
+        createHomeWidgets(bgColor, textColor);
         createHomeLayout();
         createSettingsButton(bgColor, textColor);
         createSearchButton(bgColor, textColor);
@@ -3006,6 +3002,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         super.onDestroy();
         cancelMusicDockHide();
         IconPackHelper.setLoadListener(null);
+        homeWidgetHost.destroy();
         if (prefsChangeListener != null) {
             getSharedPreferences("prefs", MODE_PRIVATE).unregisterOnSharedPreferenceChangeListener(prefsChangeListener);
         }
@@ -4358,7 +4355,8 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             boolean hasTopAnchor = (timePosition == 1 && timeView != null) ||
                     (datePosition != 0 && dateView != null) ||
                     (showSettingsButton == 1 && settingsButton != null) ||
-                    (showSearchButton == 1 && searchButton != null);
+                    (showSearchButton == 1 && searchButton != null) ||
+                    homeWidgetHost.hasVisibleWidgets();
 
             int effectiveTopPx = 0;
             if (!hasTopAnchor) {
@@ -4397,6 +4395,8 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 mainLayout.setPadding(homePaddingLeftPx, effectiveTopPx, homePaddingRightPx, effectiveBottomPx);
             }
         }
+
+        homeWidgetHost.applyInsets(homePaddingLeftPx, homePaddingRightPx);
     }
 
     private void createHomeLayout() {

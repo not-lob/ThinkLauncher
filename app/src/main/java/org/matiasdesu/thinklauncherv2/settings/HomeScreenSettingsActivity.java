@@ -86,6 +86,15 @@ public class HomeScreenSettingsActivity extends BaseSettingsActivity {
             overridePendingTransition(R.anim.slide_in_right, screenAnimations ? R.anim.slide_out_left : 0);
         });
 
+        findViewById(R.id.home_widgets_settings_button).setOnClickListener(v -> {
+            Intent intent = new Intent(this, HomeWidgetsSettingsActivity.class);
+            if (!screenAnimations) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+            }
+            startActivity(intent);
+            overridePendingTransition(R.anim.slide_in_right, screenAnimations ? R.anim.slide_out_left : 0);
+        });
+
         initPagination(null);
     }
 }
