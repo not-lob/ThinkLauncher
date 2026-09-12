@@ -12,6 +12,7 @@ import android.widget.TextView;
 import org.matiasdesu.thinklauncherv2.MainActivity;
 import org.matiasdesu.thinklauncherv2.R;
 import org.matiasdesu.thinklauncherv2.utils.DialogEffectHelper;
+import org.matiasdesu.thinklauncherv2.utils.SystemBarsHelper;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
 import android.widget.ImageButton;
@@ -22,6 +23,7 @@ public class DisplaySettingsActivity extends BaseSettingsActivity {
     private int einkRefreshEnabled;
     private int einkRefreshDelay;
     private int modalCornerRadius;
+    private int hideStatusBar;
 
     private BroadcastReceiver homeButtonReceiver = new BroadcastReceiver() {
         @Override
@@ -56,6 +58,7 @@ public class DisplaySettingsActivity extends BaseSettingsActivity {
         einkRefreshEnabled = prefs.getInt("eink_refresh_enabled", 0);
         einkRefreshDelay = prefs.getInt("eink_refresh_delay", 100);
         modalCornerRadius = prefs.getInt("modal_corner_radius", 0);
+        hideStatusBar = prefs.getInt(SystemBarsHelper.KEY_HIDE_STATUS_BAR, 0);
 
         View modalCornerRadiusContainer = findViewById(R.id.modal_corner_radius_container);
         TextView modalCornerRadiusValueTv = modalCornerRadiusContainer.findViewById(R.id.value_text);
@@ -94,6 +97,12 @@ public class DisplaySettingsActivity extends BaseSettingsActivity {
         einkRefreshEnabledValueTv.setMinWidth(
                 TextWidthHelper.getMaxTextWidthPx(einkRefreshEnabledValueTv, new String[] { "OFF", "ON" }));
 
+        View hideStatusBarContainer = findViewById(R.id.hide_status_bar_container);
+        TextView hideStatusBarValueTv = hideStatusBarContainer.findViewById(R.id.value_text);
+        hideStatusBarValueTv.setText(getOnOffText(hideStatusBar));
+        hideStatusBarValueTv
+                .setMinWidth(TextWidthHelper.getMaxTextWidthPx(hideStatusBarValueTv, new String[] { "OFF", "ON" }));
+
         View einkRefreshDelayContainer = findViewById(R.id.eink_refresh_delay_container);
         TextView einkRefreshDelayValueTv = einkRefreshDelayContainer.findViewById(R.id.value_text);
         einkRefreshDelayValueTv.setText(String.valueOf(einkRefreshDelay));
@@ -106,6 +115,23 @@ public class DisplaySettingsActivity extends BaseSettingsActivity {
 
         ImageButton minusEinkRefreshDelayBtn = einkRefreshDelayContainer.findViewById(R.id.btn_minus);
         ImageButton plusEinkRefreshDelayBtn = einkRefreshDelayContainer.findViewById(R.id.btn_plus);
+
+        ImageButton minusHideStatusBarBtn = hideStatusBarContainer.findViewById(R.id.btn_minus);
+        ImageButton plusHideStatusBarBtn = hideStatusBarContainer.findViewById(R.id.btn_plus);
+
+        minusHideStatusBarBtn.setOnClickListener(v -> {
+            hideStatusBar = (hideStatusBar - 1 + 2) % 2;
+            hideStatusBarValueTv.setText(getOnOffText(hideStatusBar));
+            prefs.edit().putInt(SystemBarsHelper.KEY_HIDE_STATUS_BAR, hideStatusBar).apply();
+            refreshPagination();
+        });
+
+        plusHideStatusBarBtn.setOnClickListener(v -> {
+            hideStatusBar = (hideStatusBar + 1) % 2;
+            hideStatusBarValueTv.setText(getOnOffText(hideStatusBar));
+            prefs.edit().putInt(SystemBarsHelper.KEY_HIDE_STATUS_BAR, hideStatusBar).apply();
+            refreshPagination();
+        });
 
         minusScrollAppListBtn.setOnClickListener(v -> {
             scrollAppList = (scrollAppList - 1 + 2) % 2;

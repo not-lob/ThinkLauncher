@@ -43,7 +43,6 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import android.view.WindowInsets;
-import android.view.WindowInsetsController;
 import androidx.core.view.WindowCompat;
 import androidx.core.content.ContextCompat;
 import android.widget.ImageView;
@@ -80,6 +79,7 @@ import org.matiasdesu.thinklauncherv2.utils.IconShapeHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
 import org.matiasdesu.thinklauncherv2.utils.ShortcutHelper;
 import org.matiasdesu.thinklauncherv2.utils.EinkRefreshHelper;
+import org.matiasdesu.thinklauncherv2.utils.SystemBarsHelper;
 import org.matiasdesu.thinklauncherv2.utils.BigmeShims;
 import org.matiasdesu.thinklauncherv2.utils.WallpaperHelper;
 import org.matiasdesu.thinklauncherv2.utils.BatteryUtils;
@@ -2014,36 +2014,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         this.wallpaperScale = initPrefs.getFloat("wallpaper_scale", 1f);
         this.wallpaperFileModified = initPrefs.getLong("wallpaper_file_modified", 0L);
 
-        if (this.hasWallpaper) {
-            WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
-                getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
-            }
-        } else {
-            WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                getWindow().setStatusBarColor(bgColor);
-                getWindow().setNavigationBarColor(bgColor);
-            }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsetsController controller = getWindow().getInsetsController();
-            if (controller != null) {
-                if (!ThemeUtils.isDarkTheme(theme, this)) {
-                    controller.setSystemBarsAppearance(WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-                } else {
-                    controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-                }
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!ThemeUtils.isDarkTheme(theme, this)) {
-                getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            } else {
-                getWindow().getDecorView().setSystemUiVisibility(0);
-            }
-        }
+        applyWindowLayoutMode(this.hasWallpaper, bgColor);
         maxApps = prefs.getInt("max_apps", 4);
         textSize = prefs.getInt("text_size", 32);
         iconSize = prefs.getInt("icon_size", 32);
@@ -2496,6 +2467,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
+            SystemBarsHelper.apply(this, theme);
             SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
             EinkRefreshHelper.refreshEink(getWindow(), prefs, prefs.getInt("eink_refresh_delay", 100));
         }
@@ -2659,37 +2631,11 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
 
         if (hasWallpaper) {
             rootLayout.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-            WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
-                getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
-            }
         } else {
             rootLayout.setBackgroundColor(bgColor);
-            WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
             mainLayout.setPadding(0, 0, 0, 0);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                getWindow().setStatusBarColor(bgColor);
-                getWindow().setNavigationBarColor(bgColor);
-            }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsetsController controller = getWindow().getInsetsController();
-            if (controller != null) {
-                if (!ThemeUtils.isDarkTheme(theme, this)) {
-                    controller.setSystemBarsAppearance(WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-                } else {
-                    controller.setSystemBarsAppearance(0, WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS);
-                }
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!ThemeUtils.isDarkTheme(theme, this)) {
-                getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-            } else {
-                getWindow().getDecorView().setSystemUiVisibility(0);
-            }
-        }
+        applyWindowLayoutMode(hasWallpaper, bgColor);
         int timeDateBgColor = hasWallpaper ? android.graphics.Color.TRANSPARENT : bgColor;
         if (timeView != null) {
             timeView.setBackgroundColor(timeDateBgColor);
@@ -4084,12 +4030,57 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 getSharedPreferences("prefs", MODE_PRIVATE).getInt("eink_refresh_delay", 100));
     }
 
+    /**
+     * Puts the window into edge-to-edge or fitted mode and applies the matching
+     * system-bar colors, then re-asserts the status-bar state. Edge-to-edge is
+     * needed for a wallpaper, and also whenever the status bar is hidden: a
+     * fitted window keeps its frame below the (now invisible) bar and leaves
+     * that strip unpainted.
+     */
+    private void applyWindowLayoutMode(boolean hasWallpaper, int bgColor) {
+        boolean edgeToEdge = hasWallpaper || SystemBarsHelper.isHideStatusBar(this);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), !edgeToEdge);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            int barColor = hasWallpaper ? android.graphics.Color.TRANSPARENT : bgColor;
+            getWindow().setStatusBarColor(barColor);
+            getWindow().setNavigationBarColor(barColor);
+        }
+        SystemBarsHelper.apply(this, theme);
+    }
+
+    /**
+     * Feeds the live system-bar insets into {@link #applyWindowInsetsToUI}. Only
+     * needed in edge-to-edge mode; a hidden status bar simply reports a top
+     * inset of 0.
+     */
+    private void installWindowInsetsListener() {
+        rootLayout.setOnApplyWindowInsetsListener((v, insets) -> {
+            int statusBarHeight;
+            int navBarHeight;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                statusBarHeight = insets.getInsets(WindowInsets.Type.statusBars()).top;
+                navBarHeight = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
+            } else {
+                statusBarHeight = insets.getSystemWindowInsetTop();
+                navBarHeight = insets.getSystemWindowInsetBottom();
+            }
+            statusBarInset = statusBarHeight;
+            navBarInset = navBarHeight;
+
+            applyWindowInsetsToUI(statusBarHeight, navBarHeight);
+
+            return insets;
+        });
+        rootLayout.requestApplyInsets();
+    }
+
     private void loadWallpaper() {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
             getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
         }
+        SystemBarsHelper.apply(this, theme);
         rootLayout.post(new Runnable() {
             @Override
             public void run() {
@@ -4124,24 +4115,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                         mainLayout.setBackgroundColor(android.graphics.Color.TRANSPARENT);
                         rootLayout.setBackgroundColor(android.graphics.Color.TRANSPARENT);
 
-                        rootLayout.setOnApplyWindowInsetsListener((v, insets) -> {
-                            int statusBarHeight = 0;
-                            int navBarHeight = 0;
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                statusBarHeight = insets.getInsets(WindowInsets.Type.statusBars()).top;
-                                navBarHeight = insets.getInsets(WindowInsets.Type.navigationBars()).bottom;
-                            } else {
-                                statusBarHeight = insets.getSystemWindowInsetTop();
-                                navBarHeight = insets.getSystemWindowInsetBottom();
-                            }
-                            statusBarInset = statusBarHeight;
-                            navBarInset = navBarHeight;
-
-                            applyWindowInsetsToUI(statusBarHeight, navBarHeight);
-
-                            return insets;
-                        });
-                        rootLayout.requestApplyInsets();
+                        installWindowInsetsListener();
                     } else {
                         wallpaperView.setVisibility(View.GONE);
                         mainLayout.setBackgroundColor(bgColor);
@@ -4150,14 +4124,17 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                         navBarInset = 0;
                         updateGravity();
 
-                        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                            getWindow().setStatusBarColor(bgColor);
-                            getWindow().setNavigationBarColor(bgColor);
-                        }
+                        applyWindowLayoutMode(false, bgColor);
 
-                        rootLayout.setOnApplyWindowInsetsListener(null);
-                        applyWindowInsetsToUI(0, 0);
+                        if (SystemBarsHelper.isHideStatusBar(this)) {
+                            // Still edge-to-edge, so the navigation-bar inset has
+                            // to come from the listener (the top one is 0 while
+                            // the status bar is hidden).
+                            installWindowInsetsListener();
+                        } else {
+                            rootLayout.setOnApplyWindowInsetsListener(null);
+                            applyWindowInsetsToUI(0, 0);
+                        }
                     }
 
                     rootLayout.setVisibility(View.VISIBLE);
