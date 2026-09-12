@@ -159,6 +159,12 @@
             android:name=".settings.IconSettingsActivity"
             android:exported="false" />
         <activity
+            android:name=".settings.IconPackSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.IconPickerActivity"
+            android:exported="false" />
+        <activity
             android:name=".settings.TextSettingsActivity"
             android:exported="false" />
         <activity

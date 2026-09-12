@@ -12,6 +12,8 @@ import android.widget.TextView;
 import org.matiasdesu.thinklauncherv2.R;
 import org.matiasdesu.thinklauncherv2.utils.DialogEffectHelper;
 import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.IconPackHelper;
+import org.matiasdesu.thinklauncherv2.utils.SystemAppHelper;
 
 public class AppOptionsDialog extends GuardedDialog {
 
@@ -86,6 +88,24 @@ public class AppOptionsDialog extends GuardedDialog {
         init();
     }
 
+    /**
+     * Pack icons are keyed by launcher component, so only real apps can have
+     * one - and there is nothing to pick from until a pack is selected.
+     */
+    private boolean canChangeIcon() {
+        if (packageName == null || packageName.isEmpty() || packageName.equals("blank")) {
+            return false;
+        }
+        if (packageName.startsWith("folder_") || packageName.startsWith("webapp_")
+                || packageName.startsWith("hidden_app_")) {
+            return false;
+        }
+        if (SystemAppHelper.isSystemApp(packageName)) {
+            return false;
+        }
+        return !IconPackHelper.getSelectedPack(getContext()).isEmpty();
+    }
+
     private void init() {
         SharedPreferences prefs = getContext().getSharedPreferences("prefs", Context.MODE_PRIVATE);
         int theme = prefs.getInt("theme", 0);
@@ -97,6 +117,7 @@ public class AppOptionsDialog extends GuardedDialog {
         DialogEffectHelper.applySurface(root, theme, getContext(), surfaceColor);
 
         TextView renameButton = findViewById(R.id.rename_button);
+        TextView changeIconButton = findViewById(R.id.change_icon_button);
         TextView hideButton = findViewById(R.id.hide_button);
         TextView moreInfoButton = findViewById(R.id.more_info_button);
         TextView uninstallButton = findViewById(R.id.uninstall_button);
@@ -111,6 +132,24 @@ public class AppOptionsDialog extends GuardedDialog {
             });
         } else {
             renameButton.setVisibility(View.GONE);
+        }
+
+        if (canChangeIcon()) {
+            changeIconButton.setVisibility(View.VISIBLE);
+            DialogEffectHelper.applyButtonTheme(changeIconButton, theme, getContext(), surfaceColor);
+            changeIconButton.setOnClickListener(v -> {
+                dismiss();
+                Intent intent = new Intent(getContext(), IconPickerActivity.class);
+                intent.putExtra(IconPickerActivity.EXTRA_PACKAGE, packageName);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try {
+                    getContext().startActivity(intent);
+                } catch (Exception e) {
+                    // Ignore
+                }
+            });
+        } else {
+            changeIconButton.setVisibility(View.GONE);
         }
 
         DialogEffectHelper.applyButtonTheme(moreInfoButton, theme, getContext(), surfaceColor);
@@ -183,7 +222,8 @@ public class AppOptionsDialog extends GuardedDialog {
             removeButton.setVisibility(View.GONE);
         }
 
-        TextView[] allButtons = {renameButton, hideButton, moreInfoButton, uninstallButton, removeButton};
+        TextView[] allButtons = {renameButton, changeIconButton, hideButton, moreInfoButton, uninstallButton,
+                removeButton};
         View lastVisible = null;
         for (int i = allButtons.length - 1; i >= 0; i--) {
             if (allButtons[i].getVisibility() == View.VISIBLE) {

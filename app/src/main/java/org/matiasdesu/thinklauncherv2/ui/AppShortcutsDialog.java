@@ -23,19 +23,31 @@ public class AppShortcutsDialog extends GuardedDialog {
         void onShortcutClick(ShortcutInfo shortcut);
     }
 
+    public interface OnChangeIconCallback {
+        void onChangeIcon();
+    }
+
     private List<ShortcutInfo> shortcuts;
     private String secondaryLabel;
     private OnSecondaryCallback secondaryCallback;
     private OnShortcutClickCallback shortcutCallback;
+    private OnChangeIconCallback changeIconCallback;
 
     public AppShortcutsDialog(Context context, List<ShortcutInfo> shortcuts,
             String secondaryLabel, OnSecondaryCallback secondaryCallback,
             OnShortcutClickCallback shortcutCallback) {
+        this(context, shortcuts, secondaryLabel, secondaryCallback, shortcutCallback, null);
+    }
+
+    public AppShortcutsDialog(Context context, List<ShortcutInfo> shortcuts,
+            String secondaryLabel, OnSecondaryCallback secondaryCallback,
+            OnShortcutClickCallback shortcutCallback, OnChangeIconCallback changeIconCallback) {
         super(context, R.style.NoAnimationDialog);
         this.shortcuts = shortcuts;
         this.secondaryLabel = secondaryLabel;
         this.secondaryCallback = secondaryCallback;
         this.shortcutCallback = shortcutCallback;
+        this.changeIconCallback = changeIconCallback;
         init();
     }
 
@@ -55,6 +67,7 @@ public class AppShortcutsDialog extends GuardedDialog {
         int marginDp = (int) (8 * getContext().getResources().getDisplayMetrics().density);
 
         if (shortcuts != null && !shortcuts.isEmpty()) {
+            int insertAt = 0;
             for (int i = 0; i < shortcuts.size(); i++) {
                 ShortcutInfo si = shortcuts.get(i);
                 TextView tv = new TextView(getContext());
@@ -75,8 +88,18 @@ public class AppShortcutsDialog extends GuardedDialog {
                         shortcutCallback.onShortcutClick(shortcut);
                     }
                 });
-                buttonContainer.addView(tv, buttonContainer.getChildCount() - 1);
+                buttonContainer.addView(tv, insertAt++);
             }
+        }
+
+        TextView changeIconButton = findViewById(R.id.change_icon_button);
+        if (changeIconCallback != null) {
+            changeIconButton.setVisibility(View.VISIBLE);
+            DialogEffectHelper.applyButtonTheme(changeIconButton, theme, getContext(), surfaceColor);
+            changeIconButton.setOnClickListener(v -> {
+                dismiss();
+                changeIconCallback.onChangeIcon();
+            });
         }
 
         secondaryButton.setText(secondaryLabel != null ? secondaryLabel : "Edit");

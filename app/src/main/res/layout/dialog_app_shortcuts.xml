@@ -17,6 +17,13 @@
         android:gravity="center">
 
         <TextView
+            android:id="@+id/change_icon_button"
+            style="@style/DialogButton"
+            android:text="Change Icon"
+            android:layout_width="match_parent"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/edit_button"
             style="@style/DialogButton"
             android:text="Edit"
