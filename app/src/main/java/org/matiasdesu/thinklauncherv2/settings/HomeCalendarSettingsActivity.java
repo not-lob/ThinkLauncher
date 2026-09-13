@@ -7,6 +7,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.RepeatListener;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
@@ -233,6 +235,8 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
             prefs.edit().putInt("home_calendar_horizontal_position", horizontalPosition).apply();
         });
 
+        FontRowBinder.bind(this, findViewById(R.id.home_calendar_font_container), FontHelper.SLOT_HOME_CALENDAR);
+
         initPagination(this::refreshVisibility);
     }
 
@@ -241,6 +245,7 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
         findViewById(R.id.home_calendar_month_grid_layout).setVisibility(vis);
         findViewById(R.id.home_calendar_agenda_layout).setVisibility(vis);
         findViewById(R.id.home_calendar_font_size_layout).setVisibility(vis);
+        findViewById(R.id.home_calendar_font_layout).setVisibility(vis);
         findViewById(R.id.home_calendar_horizontal_layout).setVisibility(vis);
 
         findViewById(R.id.home_calendar_event_dots_layout)

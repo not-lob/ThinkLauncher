@@ -6,6 +6,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.IconShapeHelper;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
@@ -235,6 +237,8 @@ public class MusicDockStyleActivity extends BaseSettingsActivity {
             textEffectColorValueTv.setText(EFFECT_COLOR_NAMES[textEffectColor]);
             prefs.edit().putInt(p("text_effect_color"), textEffectColor).apply();
         });
+
+        FontRowBinder.bind(this, findViewById(R.id.text_font_container), FontHelper.SLOT_MUSIC_DOCK);
 
         initPagination(this::refreshVisibility);
         refreshVisibility();

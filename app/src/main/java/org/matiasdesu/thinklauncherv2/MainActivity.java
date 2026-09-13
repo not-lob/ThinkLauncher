@@ -125,6 +125,7 @@ public class MainActivity extends Activity {
     private int timePosition;
     private int timeFormat24h;
     private int dateVerticalPosition;
+    private int clockDateGap;
     private int datePosition;
     private int dateHorizontalPosition;
     private int dateCalendarEvents;
@@ -807,6 +808,10 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         boolean showCalendarEvents = dateCalendarEvents == 1 && showDate && hasCalendarPermission();
         boolean hasWallpaper = WallpaperHelper.hasWallpaper(this);
         int timeDateBgColor = hasWallpaper ? android.graphics.Color.TRANSPARENT : bgColor;
+        // Gap between the date group (date + its calendar-event line) and the time, on top of the
+        // fixed ~5dp applyStackPadding already leaves - the calendar-event line stays glued to the
+        // date it belongs to either way, so this only ever sits between the two groups.
+        int clockDateGapPx = (int) (clockDateGap * getResources().getDisplayMetrics().density);
 
         if (showDate && dateVerticalPosition == 0) {
 
@@ -817,7 +822,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             updateDateText();
             dateView.setTextColor(getDateColorValue());
             dateView.setTextSize(dateFontSize);
-            dateView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+            FontHelper.applyStyled(this, dateView, FontHelper.SLOT_DATE, boldText);
             applyTextEffect(dateView, dateEffect, getDateEffectColorValue());
             applyStackPadding(dateView);
             dateView.setBackgroundColor(timeDateBgColor);
@@ -847,7 +852,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 updateCalendarEventText();
                 calendarEventView.setTextColor(getDateColorValue());
                 calendarEventView.setTextSize(calendarEventFontSize);
-                calendarEventView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+                FontHelper.applyStyled(this, calendarEventView, FontHelper.SLOT_CALENDAR_EVENT, boldText);
                 applyTextEffect(calendarEventView, dateEffect, getDateEffectColorValue());
                 applyStackPadding(calendarEventView);
                 calendarEventView.setBackgroundColor(timeDateBgColor);
@@ -875,7 +880,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 timeView.setText(timeSdf.format(new Date()));
                 timeView.setTextColor(getTimeColorValue());
                 timeView.setTextSize(timeFontSize);
-                timeView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+                FontHelper.applyStyled(this, timeView, FontHelper.SLOT_TIME, boldText);
                 applyTextEffect(timeView, timeEffect, getTimeEffectColorValue());
                 applyStackPadding(timeView);
                 timeView.setBackgroundColor(timeDateBgColor);
@@ -884,6 +889,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                         RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
                 timeParams.addRule(RelativeLayout.BELOW,
                     showCalendarEvents ? calendarEventView.getId() : dateView.getId());
+                timeParams.topMargin = clockDateGapPx;
                 timeParams.addRule(getRelativeHorizontalRule(timeHorizontalPosition));
                 if ((showSettingsButton == 1 || showSearchButton == 1) && timeHorizontalPosition == 2) {
                     int maxBtnSize = Math.max(showSettingsButton == 1 ? settingsButtonSize : 0,
@@ -906,7 +912,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 timeView.setText(timeSdf.format(new Date()));
                 timeView.setTextColor(getTimeColorValue());
                 timeView.setTextSize(timeFontSize);
-                timeView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+                FontHelper.applyStyled(this, timeView, FontHelper.SLOT_TIME, boldText);
                 applyTextEffect(timeView, timeEffect, getTimeEffectColorValue());
                 applyStackPadding(timeView);
                 timeView.setBackgroundColor(timeDateBgColor);
@@ -941,7 +947,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 updateDateText();
                 dateView.setTextColor(getDateColorValue());
                 dateView.setTextSize(dateFontSize);
-                dateView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+                FontHelper.applyStyled(this, dateView, FontHelper.SLOT_DATE, boldText);
                 applyTextEffect(dateView, dateEffect, getDateEffectColorValue());
                 applyStackPadding(dateView);
                 dateView.setBackgroundColor(timeDateBgColor);
@@ -950,6 +956,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                         RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
                 if (showTime) {
                     dateParams.addRule(RelativeLayout.BELOW, timeView.getId());
+                    dateParams.topMargin = clockDateGapPx;
                 } else if (anchorId == View.NO_ID) {
                     dateParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
                 } else {
@@ -973,7 +980,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 updateCalendarEventText();
                 calendarEventView.setTextColor(getDateColorValue());
                 calendarEventView.setTextSize(calendarEventFontSize);
-                calendarEventView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+                FontHelper.applyStyled(this, calendarEventView, FontHelper.SLOT_CALENDAR_EVENT, boldText);
                 applyTextEffect(calendarEventView, dateEffect, getDateEffectColorValue());
                 applyStackPadding(calendarEventView);
                 calendarEventView.setBackgroundColor(timeDateBgColor);
@@ -1477,7 +1484,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         StrokeTextView titleView = new StrokeTextView(this);
         titleView.setTextColor(resolveAppBarThemeColor(prefs.getInt("music_dock_text_color", 0), false));
         titleView.setTextSize(textSizeSp);
-        titleView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+        FontHelper.applyStyled(this, titleView, FontHelper.SLOT_MUSIC_DOCK, boldText);
         titleView.setSingleLine(true);
         titleView.setEllipsize(TextUtils.TruncateAt.END);
         titleView.setMaxWidth((int) (160 * density));
@@ -2263,6 +2270,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         dateFormat = prefs.contains("date_format") ? prefs.getInt("date_format", 0)
                 : (prefs.getInt("full_month_name", 0) == 1 ? 1 : 0);
         dateVerticalPosition = prefs.getInt("date_vertical_position", 0);
+        clockDateGap = prefs.getInt("clock_date_gap", 0);
         datePosition = prefs.getInt("date_position", 0);
         dateHorizontalPosition = prefs.getInt("date_horizontal_position", 0);
         dateCalendarEvents = prefs.getInt("date_calendar_events", 0);
@@ -2430,6 +2438,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             int newTimePosition = prefs.getInt("time_position", 0);
             int newTimeFormat24h = prefs.getInt("time_format_24h", 1);
             int newDateVerticalPosition = prefs.getInt("date_vertical_position", 0);
+            int newClockDateGap = prefs.getInt("clock_date_gap", 0);
             int newDatePosition = prefs.getInt("date_position", 0);
             int newSettingsButtonSize = prefs.getInt("settings_button_size", 42);
             int newSettingsButtonColor = prefs.getInt("settings_button_color", 0);
@@ -2513,6 +2522,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             boolean layoutChanged = newMaxApps != maxApps || newHomeColumns != homeColumns || newHomePages != homePages
                     || newHomeAlignment != homeAlignment || newHomeVerticalAlignment != homeVerticalAlignment
                     || newTimePosition != timePosition || newDateVerticalPosition != dateVerticalPosition
+                    || newClockDateGap != clockDateGap
                     || newTimeFormat24h != timeFormat24h
                     || newDateFormat != dateFormat
                     || newDatePosition != datePosition || newDateHorizontalPosition != dateHorizontalPosition
@@ -2542,6 +2552,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                     || newHomeVerticalAlignment != homeVerticalAlignment)
                     && !(newMaxApps != maxApps || newHomeColumns != homeColumns || newHomePages != homePages
                             || newTimePosition != timePosition || newDateVerticalPosition != dateVerticalPosition
+                            || newClockDateGap != clockDateGap
                             || newTimeFormat24h != timeFormat24h
                             || newDateFormat != dateFormat
                             || newDatePosition != datePosition || newDateHorizontalPosition != dateHorizontalPosition
@@ -2591,6 +2602,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 dateEffectColor = newDateEffectColor;
                 dateCalendarEvents = newDateCalendarEvents;
                 dateVerticalPosition = newDateVerticalPosition;
+                clockDateGap = newClockDateGap;
                 datePosition = newDatePosition;
                 dateHorizontalPosition = newDateHorizontalPosition;
                 timeHorizontalPosition = newTimeHorizontalPosition;
@@ -2950,17 +2962,17 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     private void updateTextStyles() {
         if (timeView != null) {
             timeView.setTextSize(timeFontSize);
-            timeView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+            FontHelper.applyStyled(this, timeView, FontHelper.SLOT_TIME, boldText);
             applyTextEffect(timeView, timeEffect, getTimeEffectColorValue());
         }
         if (dateView != null) {
             dateView.setTextSize(dateFontSize);
-            dateView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+            FontHelper.applyStyled(this, dateView, FontHelper.SLOT_DATE, boldText);
             applyTextEffect(dateView, dateEffect, getDateEffectColorValue());
         }
         if (calendarEventView != null) {
             calendarEventView.setTextSize(calendarEventFontSize);
-            calendarEventView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+            FontHelper.applyStyled(this, calendarEventView, FontHelper.SLOT_CALENDAR_EVENT, boldText);
             applyTextEffect(calendarEventView, dateEffect, getDateEffectColorValue());
         }
         for (LinearLayout slot : appSlots) {
@@ -2968,7 +2980,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 TextView tv = getSlotTextView(slot);
                 if (tv != null) {
                     tv.setTextSize(textSize);
-                    tv.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+                    FontHelper.applyStyled(this, tv, FontHelper.SLOT_APP_LIST, boldText);
                     tv.setTextColor(getAppTextColorValue());
                     applyTextEffect(tv);
                 }
@@ -3406,7 +3418,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         tv.setText(appLabels.get(position));
         tv.setTextColor(getAppTextColorValue());
         tv.setTextSize(textSize);
-        tv.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+        FontHelper.applyStyled(this, tv, FontHelper.SLOT_APP_LIST, boldText);
         tv.setGravity(getHorizontalGravity(homeAlignment));
         tv.setMaxLines(1);
         tv.setEllipsize(TextUtils.TruncateAt.END);
@@ -4635,7 +4647,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         tv.setText(appLabels.get(index));
         tv.setTextColor(getAppTextColorValue());
         tv.setTextSize(textSize);
-        tv.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
+        FontHelper.applyStyled(this, tv, FontHelper.SLOT_APP_LIST, boldText);
         applyTextEffect(tv);
         tv.setBackgroundColor(0);
 
