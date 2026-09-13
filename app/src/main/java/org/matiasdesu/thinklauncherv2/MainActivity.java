@@ -2575,7 +2575,13 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                     || newEffectColor != effectColor || newIconEffect != iconEffect
                     || newIconEffectColor != iconEffectColor;
 
-            if (themeChanged || textChanged || layoutChanged || iconChanged || wallpaperChanged) {
+            // Hidden so a half-restyled screen never draws. Every path out of this
+            // block has to put it back: loadWallpaper() does it asynchronously when it
+            // runs, and the tail of this method covers the cases where it doesn't --
+            // a text-only change such as a font size, which otherwise left the
+            // launcher sitting on a blank screen until it was restarted.
+            boolean rootHidden = themeChanged || textChanged || layoutChanged || iconChanged || wallpaperChanged;
+            if (rootHidden) {
                 rootLayout.setVisibility(View.INVISIBLE);
                 theme = newTheme;
                 customBgColor = newCustomBgColor;
@@ -2685,13 +2691,22 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
 
             if (wallpaperChanged || themeChanged || layoutChanged) {
                 loadWallpaper();
+                // Restores visibility itself once the bitmap lands.
+                rootHidden = false;
             }
 
             // Only the artwork changed, so none of the branches above redrew the
-            // slots. recreateHome also restores root visibility, which the
-            // block above hides whenever it runs.
+            // slots. The hide above never ran here: every pref iconChanged keys on
+            // also sets layoutChanged, which this branch excludes.
             if (iconArtworkChanged && !layoutChanged && !themeChanged && !textChanged && !wallpaperChanged) {
                 recreateHome();
+            }
+
+            // The restyle was applied in place, with no wallpaper pass to unhide the
+            // screen afterwards, so pair the hide here.
+            if (rootHidden) {
+                rootLayout.setVisibility(View.VISIBLE);
+                EinkRefreshHelper.refreshEink(getWindow(), prefs, prefs.getInt("eink_refresh_delay", 100));
             }
         }
 
