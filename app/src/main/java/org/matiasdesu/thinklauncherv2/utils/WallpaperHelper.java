@@ -20,6 +20,16 @@ public class WallpaperHelper {
 
     private static final String WALLPAPER_FILENAME = "custom_wallpaper.png";
 
+    /**
+     * Zoom bounds for wallpaper positioning. Below 1f, the cover-fit crop
+     * can't grow any further (there's no more of the source image left in
+     * the already-maxed dimension), so scale < 1f instead shrinks the
+     * cover-fit image within the screen, letterboxed against the theme
+     * background color.
+     */
+    public static final float MIN_ZOOM_SCALE = 0.5f;
+    public static final float MAX_ZOOM_SCALE = 3f;
+
     private static final LruCache<String, Bitmap> WALLPAPER_CACHE = new LruCache<String, Bitmap>(getDefaultCacheSize()) {
         @Override
         protected int sizeOf(String key, Bitmap value) {
@@ -191,7 +201,7 @@ public class WallpaperHelper {
         float offsetY = prefs.getFloat("wallpaper_offset_y", 0.5f);
         float scale = prefs.getFloat("wallpaper_scale", 1f);
 
-        return cropWallpaperForScreen(wallpaper, screenWidth, screenHeight, offsetX, offsetY, scale);
+        return cropWallpaperForScreen(context, wallpaper, screenWidth, screenHeight, offsetX, offsetY, scale);
     }
 
     public static Bitmap getWallpaperForScreen(Context context, int screenWidth, int screenHeight, boolean blur) {
@@ -210,9 +220,9 @@ public class WallpaperHelper {
     /**
      * Crop and scale wallpaper to fit screen with given offset and zoom
      */
-    public static Bitmap cropWallpaperForScreen(Bitmap bitmap, int screenWidth, int screenHeight, 
+    public static Bitmap cropWallpaperForScreen(Context context, Bitmap bitmap, int screenWidth, int screenHeight,
                                                  float offsetX, float offsetY) {
-        return cropWallpaperForScreen(bitmap, screenWidth, screenHeight, offsetX, offsetY, 1f);
+        return cropWallpaperForScreen(context, bitmap, screenWidth, screenHeight, offsetX, offsetY, 1f);
     }
 
     /**
@@ -270,29 +280,58 @@ public class WallpaperHelper {
     /**
      * Crop and scale wallpaper to fit screen with given offset and zoom
      */
-    public static Bitmap cropWallpaperForScreen(Bitmap bitmap, int screenWidth, int screenHeight,
+    public static Bitmap cropWallpaperForScreen(Context context, Bitmap bitmap, int screenWidth, int screenHeight,
                                                  float offsetX, float offsetY, float scale) {
         if (bitmap == null) return null;
 
         android.graphics.Rect srcRect = computeCropSrcRect(bitmap, screenWidth, screenHeight,
                 offsetX, offsetY, scale);
 
+        boolean letterboxed = scale < 1f;
+
         // Create output bitmap. Use RGB_565 when the source has no alpha:
         // e-ink panels are grayscale anyway, and this halves memory usage.
-        Bitmap.Config config = (!bitmap.hasAlpha() || bitmap.getConfig() == Bitmap.Config.RGB_565)
+        // Letterboxed output is always opaque (painted with the theme
+        // background color), so it's eligible for RGB_565 too.
+        Bitmap.Config config = (letterboxed || !bitmap.hasAlpha() || bitmap.getConfig() == Bitmap.Config.RGB_565)
                 ? Bitmap.Config.RGB_565
                 : Bitmap.Config.ARGB_8888;
         Bitmap result = Bitmap.createBitmap(screenWidth, screenHeight, config);
         Canvas canvas = new Canvas(result);
 
-        // Draw the cropped portion of the wallpaper
-        RectF dstRect = new RectF(0, 0, screenWidth, screenHeight);
+        RectF dstRect;
+        if (letterboxed) {
+            int theme = context.getSharedPreferences("prefs", Context.MODE_PRIVATE).getInt("theme", 0);
+            canvas.drawColor(ThemeUtils.getBgColor(theme, context));
+            dstRect = computeLetterboxDstRect(screenWidth, screenHeight, scale);
+        } else {
+            dstRect = new RectF(0, 0, screenWidth, screenHeight);
+        }
 
         canvas.drawBitmap(bitmap, srcRect,
             new android.graphics.Rect((int)dstRect.left, (int)dstRect.top, (int)dstRect.right, (int)dstRect.bottom),
             null);
 
         return result;
+    }
+
+    /**
+     * The rectangle the wallpaper is drawn into, centered within a
+     * {@code fullWidth}x{@code fullHeight} area. At scale &gt;= 1 this is the
+     * full area (the cover-fit crop already fills it); below 1, it shrinks
+     * proportionally, leaving the rest to be painted as letterbox/pillarbox.
+     * Shared by the home-screen renderer and the settings preview so both
+     * shrink the image identically.
+     */
+    public static RectF computeLetterboxDstRect(float fullWidth, float fullHeight, float scale) {
+        if (scale >= 1f) {
+            return new RectF(0, 0, fullWidth, fullHeight);
+        }
+        float w = fullWidth * scale;
+        float h = fullHeight * scale;
+        float left = (fullWidth - w) / 2f;
+        float top = (fullHeight - h) / 2f;
+        return new RectF(left, top, left + w, top + h);
     }
 
     public static Bitmap blurBitmap(Bitmap source, int radius) {

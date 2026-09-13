@@ -110,7 +110,7 @@ public class WallpaperPositionView extends View {
     public float getOffsetY() { return offsetY; }
 
     public void setScale(float scale) {
-        this.scale = Math.max(1f, scale);
+        this.scale = Math.max(WallpaperHelper.MIN_ZOOM_SCALE, Math.min(WallpaperHelper.MAX_ZOOM_SCALE, scale));
         invalidate();
     }
 
@@ -171,9 +171,14 @@ public class WallpaperPositionView extends View {
         WallpaperHelper.computeCropSrcRect(wallpaperBitmap, screenWidth, screenHeight,
                 offsetX, offsetY, scale, srcRectInt);
 
+        // Same shrink-within-the-screen math as the home renderer, mapped
+        // into the preview's screenRect coordinates.
+        RectF dst = WallpaperHelper.computeLetterboxDstRect(previewWidth, previewHeight, scale);
+        dst.offset(screenRect.left, screenRect.top);
+
         canvas.save();
         canvas.clipRect(screenRect);
-        canvas.drawBitmap(wallpaperBitmap, srcRectInt, screenRect, previewPaint);
+        canvas.drawBitmap(wallpaperBitmap, srcRectInt, dst, previewPaint);
         canvas.restore();
     }
 
@@ -209,7 +214,8 @@ public class WallpaperPositionView extends View {
 
                     if (lastPinchDist > 0) {
                         float ratio = dist / lastPinchDist;
-                        float newScale = Math.max(1f, Math.min(3f, scale * ratio));
+                        float newScale = Math.max(WallpaperHelper.MIN_ZOOM_SCALE,
+                                Math.min(WallpaperHelper.MAX_ZOOM_SCALE, scale * ratio));
                         if (newScale != scale) {
                             scale = newScale;
                             invalidate();
