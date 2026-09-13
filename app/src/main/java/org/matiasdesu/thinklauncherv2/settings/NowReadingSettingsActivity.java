@@ -7,6 +7,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.RepeatListener;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
@@ -258,6 +260,8 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
             prefs.edit().putInt("now_reading_horizontal_position", horizontalPosition).apply();
         });
 
+        FontRowBinder.bind(this, findViewById(R.id.now_reading_font_container), FontHelper.SLOT_NOW_READING);
+
         initPagination(this::refreshVisibility);
     }
 
@@ -268,6 +272,7 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
         findViewById(R.id.now_reading_author_layout).setVisibility(vis);
         findViewById(R.id.now_reading_progress_layout).setVisibility(vis);
         findViewById(R.id.now_reading_horizontal_layout).setVisibility(vis);
+        findViewById(R.id.now_reading_font_layout).setVisibility(vis);
 
         findViewById(R.id.now_reading_cover_size_layout)
                 .setVisibility(enabled == 1 && showCover == 1 ? View.VISIBLE : View.GONE);

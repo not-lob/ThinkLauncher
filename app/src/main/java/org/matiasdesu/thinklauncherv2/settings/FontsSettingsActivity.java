@@ -24,7 +24,7 @@ public class FontsSettingsActivity extends BaseSettingsActivity {
         ThemeUtils.applyThemeToViewGroup(root, theme, this);
 
         findViewById(R.id.custom_font_button).setOnClickListener(v -> {
-            Intent intent = new Intent(this, FontSettingsActivity.class);
+            Intent intent = new Intent(this, FontLibraryActivity.class);
             if (!screenAnimations) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
             }

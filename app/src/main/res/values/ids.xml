@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tag key holding the font slot id (see FontHelper) a TextView was last styled for, so a
+         later blanket FontHelper.applyToViewTree pass re-resolves that slot's font instead of
+         clobbering it back to the default. -->
+    <item name="font_slot_tag" type="id"/>
+</resources>

@@ -11,6 +11,8 @@ import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.MainActivity;
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
 import android.widget.ImageButton;
@@ -215,6 +217,8 @@ public class TimeSettingsActivity extends BaseSettingsActivity {
             timeEffectColorValueTv.setText(getTimeEffectColorText(timeEffectColor));
             prefs.edit().putInt("time_effect_color", timeEffectColor).apply();
         });
+
+        FontRowBinder.bind(this, findViewById(R.id.time_font_container), FontHelper.SLOT_TIME);
 
         initPagination(this::refreshVisibility);
     }

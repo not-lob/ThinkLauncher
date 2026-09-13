@@ -37,7 +37,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="48dp"
-                android:text="Custom Font Settings"
+                android:text="Font Library"
                 android:textColor="?attr/text_color"
                 android:textSize="24sp"
                 android:textStyle="bold"
@@ -72,9 +72,9 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- Choose Font Button -->
+                <!-- Add Font Button -->
                 <LinearLayout
-                    android:id="@+id/choose_font_button"
+                    android:id="@+id/add_font_button"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
@@ -93,50 +93,43 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Choose Font:"
+                        android:text="Add Font:"
                         android:textColor="?attr/text_color"
                         android:textSize="18sp"
                         android:textStyle="bold" />
 
                     <TextView
                         style="@style/GestureAppButton"
-                        android:id="@+id/select_button_text"
-                        android:text="Select" />
+                        android:id="@+id/add_font_button_text"
+                        android:text="Import" />
 
                 </LinearLayout>
 
-                <!-- Reset Font Button -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:background="?attr/text_color"
+                    android:alpha="0.3" />
+
+                <!-- Tapping a row makes it the default; the check mark shows which one is
+                     default. Empty when no font has been imported yet. -->
                 <LinearLayout
-                    android:id="@+id/reset_font_button"
+                    android:id="@+id/font_library_list_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
+                    android:orientation="vertical" />
+
+                <TextView
+                    android:id="@+id/empty_library_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_margin="16dp"
-                    android:clickable="true">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/clean"
-                        android:layout_marginEnd="8dp"
-                        android:tint="?attr/text_color" />
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Reset Font:"
-                        android:textColor="?attr/text_color"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        style="@style/GestureAppButton"
-                        android:id="@+id/reset_button_text"
-                        android:text="Reset" />
-
-                </LinearLayout>
+                    android:text="No fonts imported yet. Import one above, then use it as the default or as a per-widget override in that widget's settings."
+                    android:textColor="?attr/text_color"
+                    android:textSize="14sp"
+                    android:alpha="0.6" />
 
             </LinearLayout>
 

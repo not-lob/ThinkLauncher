@@ -7,6 +7,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.RepeatListener;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
@@ -179,6 +181,8 @@ public class StatusRowSettingsActivity extends BaseSettingsActivity {
             prefs.edit().putInt("status_row_horizontal_position", horizontalPosition).apply();
         });
 
+        FontRowBinder.bind(this, findViewById(R.id.status_font_container), FontHelper.SLOT_STATUS_ROW);
+
         initPagination(this::refreshVisibility);
     }
 
@@ -188,6 +192,7 @@ public class StatusRowSettingsActivity extends BaseSettingsActivity {
         findViewById(R.id.status_battery_percent_layout).setVisibility(vis);
         findViewById(R.id.status_wifi_layout).setVisibility(vis);
         findViewById(R.id.status_font_size_layout).setVisibility(vis);
+        findViewById(R.id.status_font_layout).setVisibility(vis);
         findViewById(R.id.status_icon_size_layout).setVisibility(vis);
         findViewById(R.id.status_horizontal_layout).setVisibility(vis);
     }

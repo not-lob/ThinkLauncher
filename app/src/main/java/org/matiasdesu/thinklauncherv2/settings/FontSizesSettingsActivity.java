@@ -11,6 +11,8 @@ import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.MainActivity;
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
 import android.widget.ImageButton;
 
@@ -166,6 +168,8 @@ public class FontSizesSettingsActivity extends BaseSettingsActivity {
                 prefs.edit().putInt("folder_font_size", folderFontSize).apply();
             }
         }));
+
+        FontRowBinder.bind(this, findViewById(R.id.home_font_container), FontHelper.SLOT_APP_LIST);
 
         initPagination(this::refreshVisibility);
     }

@@ -11,6 +11,8 @@ import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.MainActivity;
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.TextWidthHelper;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
 import android.widget.ImageButton;
@@ -22,6 +24,7 @@ public class DateSettingsActivity extends BaseSettingsActivity {
     private int dateFontSize;
     private int dateHorizontalPosition;
     private int dateVerticalPosition;
+    private int clockDateGap;
     private int dateFormat;
     private int dateColor;
     private int dateEffect;
@@ -65,6 +68,7 @@ public class DateSettingsActivity extends BaseSettingsActivity {
         dateFontSize = prefs.getInt("date_font_size", 22);
         dateHorizontalPosition = prefs.getInt("date_horizontal_position", 0);
         dateVerticalPosition = prefs.getInt("date_vertical_position", 0);
+        clockDateGap = prefs.getInt("clock_date_gap", 0);
         dateFormat = prefs.contains("date_format") ? prefs.getInt("date_format", 0)
                 : (prefs.getInt("full_month_name", 0) == 1 ? 1 : 0);
         dateColor = prefs.getInt("date_color", 0);
@@ -96,6 +100,10 @@ public class DateSettingsActivity extends BaseSettingsActivity {
         dateVerticalValueTv
                 .setMinWidth(TextWidthHelper.getMaxTextWidthPx(dateVerticalValueTv, new String[] { "TOP", "BOTTOM" }));
 
+        View clockDateGapContainer = findViewById(R.id.clock_date_gap_container);
+        TextView clockDateGapValueTv = clockDateGapContainer.findViewById(R.id.value_text);
+        clockDateGapValueTv.setText(String.valueOf(clockDateGap));
+
         View dateFormatContainer = findViewById(R.id.date_format_container);
         TextView dateFormatValueTv = dateFormatContainer.findViewById(R.id.value_text);
         dateFormatValueTv.setText(getDateFormatText(dateFormat));
@@ -116,6 +124,8 @@ public class DateSettingsActivity extends BaseSettingsActivity {
         ImageButton plusDateHorizontalBtn = dateHorizontalContainer.findViewById(R.id.btn_plus);
         ImageButton minusDateVerticalBtn = dateVerticalContainer.findViewById(R.id.btn_minus);
         ImageButton plusDateVerticalBtn = dateVerticalContainer.findViewById(R.id.btn_plus);
+        ImageButton minusClockDateGapBtn = clockDateGapContainer.findViewById(R.id.btn_minus);
+        ImageButton plusClockDateGapBtn = clockDateGapContainer.findViewById(R.id.btn_plus);
         ImageButton minusDateFormatBtn = dateFormatContainer.findViewById(R.id.btn_minus);
         ImageButton plusDateFormatBtn = dateFormatContainer.findViewById(R.id.btn_plus);
         ImageButton minusDateColorBtn = dateColorContainer.findViewById(R.id.btn_minus);
@@ -226,6 +236,22 @@ public class DateSettingsActivity extends BaseSettingsActivity {
             dateVerticalValueTv.setText(getVerticalPositionText(dateVerticalPosition));
             prefs.edit().putInt("date_vertical_position", dateVerticalPosition).apply();
         });
+
+        minusClockDateGapBtn.setOnTouchListener(new org.matiasdesu.thinklauncherv2.utils.RepeatListener(v -> {
+            if (clockDateGap > 0) {
+                clockDateGap = Math.max(0, clockDateGap - 4);
+                clockDateGapValueTv.setText(String.valueOf(clockDateGap));
+                prefs.edit().putInt("clock_date_gap", clockDateGap).apply();
+            }
+        }));
+
+        plusClockDateGapBtn.setOnTouchListener(new org.matiasdesu.thinklauncherv2.utils.RepeatListener(v -> {
+            if (clockDateGap < 200) {
+                clockDateGap = Math.min(200, clockDateGap + 4);
+                clockDateGapValueTv.setText(String.valueOf(clockDateGap));
+                prefs.edit().putInt("clock_date_gap", clockDateGap).apply();
+            }
+        }));
 
         minusDateFormatBtn.setOnClickListener(v -> {
             dateFormat = (dateFormat - 1 + 5) % 5;
@@ -339,42 +365,53 @@ public class DateSettingsActivity extends BaseSettingsActivity {
             prefs.edit().putInt("battery_position", batteryPosition).apply();
         });
 
+        FontRowBinder.bind(this, findViewById(R.id.date_font_container), FontHelper.SLOT_DATE);
+        FontRowBinder.bind(this, findViewById(R.id.calendar_event_font_container), FontHelper.SLOT_CALENDAR_EVENT);
+
         initPagination(this::refreshVisibility);
     }
 
     private void refreshVisibility() {
         LinearLayout fontSizeLayout = findViewById(R.id.date_font_size_layout);
+        LinearLayout dateFontLayout = findViewById(R.id.date_font_layout);
         LinearLayout horizontalLayout = findViewById(R.id.date_horizontal_layout);
         LinearLayout verticalLayout = findViewById(R.id.date_vertical_layout);
+        LinearLayout clockDateGapLayout = findViewById(R.id.clock_date_gap_layout);
         LinearLayout dateFormatLayout = findViewById(R.id.date_format_layout);
         LinearLayout dateColorLayout = findViewById(R.id.date_color_layout);
         LinearLayout dateEffectLayout = findViewById(R.id.date_effect_layout);
         LinearLayout dateEffectColorLayout = findViewById(R.id.date_effect_color_layout);
         LinearLayout dateCalendarEventsLayout = findViewById(R.id.date_calendar_events_layout);
         LinearLayout calendarEventFontSizeLayout = findViewById(R.id.calendar_event_font_size_layout);
+        LinearLayout calendarEventFontLayout = findViewById(R.id.calendar_event_font_layout);
         LinearLayout batteryInfoLayout = findViewById(R.id.battery_info_layout);
         LinearLayout batteryPositionLayout = findViewById(R.id.battery_position_layout);
 
         if (datePosition == 0) {
             fontSizeLayout.setVisibility(View.GONE);
+            dateFontLayout.setVisibility(View.GONE);
             horizontalLayout.setVisibility(View.GONE);
             verticalLayout.setVisibility(View.GONE);
+            clockDateGapLayout.setVisibility(View.GONE);
             dateFormatLayout.setVisibility(View.GONE);
             dateColorLayout.setVisibility(View.GONE);
             dateEffectLayout.setVisibility(View.GONE);
             dateEffectColorLayout.setVisibility(View.GONE);
             dateCalendarEventsLayout.setVisibility(View.GONE);
             calendarEventFontSizeLayout.setVisibility(View.GONE);
+            calendarEventFontLayout.setVisibility(View.GONE);
             batteryInfoLayout.setVisibility(View.GONE);
             batteryPositionLayout.setVisibility(View.GONE);
         } else {
             fontSizeLayout.setVisibility(View.VISIBLE);
+            dateFontLayout.setVisibility(View.VISIBLE);
             horizontalLayout.setVisibility(View.VISIBLE);
             dateFormatLayout.setVisibility(View.VISIBLE);
             dateColorLayout.setVisibility(View.VISIBLE);
             dateEffectLayout.setVisibility(View.VISIBLE);
             dateCalendarEventsLayout.setVisibility(View.VISIBLE);
             calendarEventFontSizeLayout.setVisibility(dateCalendarEvents == 1 ? View.VISIBLE : View.GONE);
+            calendarEventFontLayout.setVisibility(dateCalendarEvents == 1 ? View.VISIBLE : View.GONE);
             batteryInfoLayout.setVisibility(View.VISIBLE);
 
             if (batteryInfo == 1) {
@@ -391,8 +428,12 @@ public class DateSettingsActivity extends BaseSettingsActivity {
 
             if (timePosition == 1) {
                 verticalLayout.setVisibility(View.VISIBLE);
+                // Only meaningful once both a date and a time are actually on screen to have a
+                // gap between - same gate as the vertical-position row right above it.
+                clockDateGapLayout.setVisibility(View.VISIBLE);
             } else {
                 verticalLayout.setVisibility(View.GONE);
+                clockDateGapLayout.setVisibility(View.GONE);
             }
         }
     }

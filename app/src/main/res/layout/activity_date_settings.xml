@@ -129,6 +129,35 @@
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/date_font_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_margin="16dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/text_size"
+                        android:layout_marginEnd="8dp"
+                        android:tint="?attr/text_color" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Date Font:"
+                        android:textColor="?attr/text_color"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <include layout="@layout/plus_minus_layout"
+                        android:id="@+id/date_font_container" />
+
+                </LinearLayout>
+
+                <LinearLayout
                     android:id="@+id/date_horizontal_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -183,6 +212,35 @@
 
                     <include layout="@layout/plus_minus_layout"
                         android:id="@+id/date_vertical_container" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/clock_date_gap_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_margin="16dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/vertical_alignment"
+                        android:layout_marginEnd="8dp"
+                        android:tint="?attr/text_color" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Gap to Time:"
+                        android:textColor="?attr/text_color"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <include layout="@layout/plus_minus_layout"
+                        android:id="@+id/clock_date_gap_container" />
 
                 </LinearLayout>
 
@@ -357,6 +415,35 @@
 
                     <include layout="@layout/plus_minus_layout"
                         android:id="@+id/calendar_event_font_size_container" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/calendar_event_font_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_margin="16dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/text_size"
+                        android:layout_marginEnd="8dp"
+                        android:tint="?attr/text_color" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Event Font:"
+                        android:textColor="?attr/text_color"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <include layout="@layout/plus_minus_layout"
+                        android:id="@+id/calendar_event_font_container" />
 
                 </LinearLayout>
 

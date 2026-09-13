@@ -73,6 +73,9 @@ public class HomeWidgetHost {
             if (view.getId() == View.NO_ID) {
                 view.setId(View.generateViewId());
             }
+            // Widget ids double as font slot ids (see FontHelper), so this is the whole wiring
+            // needed to let a widget's font be overridden independently of the default font.
+            FontHelper.applySlotToViewTree(host, view, widget.id());
             // createView already set a LayoutParams carrying the widget's configured horizontal
             // rule; addView(view, lp) below replaces it wholesale, so re-apply that rule here or a
             // widget set to CENTER/RIGHT silently renders left (and getVisibleHorizontalPositions
@@ -221,7 +224,9 @@ public class HomeWidgetHost {
                         // the now-reading title/author), and it lands long after MainActivity's
                         // onResume font pass has already walked the tree - so those rows would
                         // keep the system font while everything around them used the custom one.
-                        FontHelper.applyToViewTree(host, view);
+                        // Re-tagging (not just applyToViewTree) also covers these newly added rows
+                        // with the widget's own slot, so a per-widget font override reaches them too.
+                        FontHelper.applySlotToViewTree(host, view, widget.id());
                     }
                     remaining[0]--;
                     if (remaining[0] == 0) {
