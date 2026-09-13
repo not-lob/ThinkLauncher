@@ -78,25 +78,30 @@ public final class SystemBarsHelper {
      * <ul>
      * <li>the frame is sized from {@code fitInsetsTypes}, so unless the system
      * bars are dropped from it the window keeps its old frame and leaves the
-     * freed strip unpainted. A main activity window may only fit all system bars
-     * or none — the WM rejects a partial set — so hiding means going fully
-     * edge-to-edge, and the caller feeds the navigation-bar inset back into the
-     * layout through its insets listener.</li>
+     * freed strip unpainted. Hiding therefore means going fully edge-to-edge,
+     * and the caller feeds the navigation-bar inset back into the layout through
+     * its insets listener.</li>
      * <li>on a device with a display cutout the window is still kept below the
      * cutout safe area, which leaves the same strip unpainted, so it also has to
      * opt into laying out behind the cutout.</li>
      * </ul>
+     *
+     * The fit types are only ever cleared, never set: this is the main window of
+     * an activity that fills its task, and the WM rejects such a window asking to
+     * fit any insets at all ("Illegal attributes: Main activity window that isn't
+     * translucent trying to fit insets"), which kills the launcher at window-add
+     * time. Showing the bar again is the caller's
+     * {@code setDecorFitsSystemWindows(window, true)}, which pads the content
+     * from the insets instead of shrinking the frame.
      */
     private static void applyWindowAttributes(Window window, boolean hide) {
         WindowManager.LayoutParams params = window.getAttributes();
         boolean changed = false;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            int fitTypes = hide ? 0 : WindowInsets.Type.systemBars();
-            if (params.getFitInsetsTypes() != fitTypes) {
-                params.setFitInsetsTypes(fitTypes);
-                changed = true;
-            }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hide
+                && params.getFitInsetsTypes() != 0) {
+            params.setFitInsetsTypes(0);
+            changed = true;
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
