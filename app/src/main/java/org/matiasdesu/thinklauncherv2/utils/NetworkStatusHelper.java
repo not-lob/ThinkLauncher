@@ -47,6 +47,16 @@ public final class NetworkStatusHelper {
         return cached;
     }
 
+    /**
+     * Forces the next {@link #getStatus} call to re-query instead of returning the cached value.
+     * Called when a {@link android.net.ConnectivityManager.NetworkCallback} reports an actual
+     * connectivity change, so a network flap is reflected immediately instead of waiting out the
+     * TTL (or, worse, the next onResume - see HomeWidgetHost's network callback).
+     */
+    public static void invalidate() {
+        lastFetchElapsed = -1;
+    }
+
     private static Status fetch(Context context) {
         try {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);

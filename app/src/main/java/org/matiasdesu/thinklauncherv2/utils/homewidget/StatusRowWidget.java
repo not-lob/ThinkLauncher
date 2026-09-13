@@ -26,6 +26,9 @@ import org.matiasdesu.thinklauncherv2.views.BatteryLevelView;
  */
 public class StatusRowWidget implements HomeWidget {
 
+    /** Matches {@link #id()}; used by HomeWidgetHost's network callback to target this widget. */
+    public static final String ID = "status_row";
+
     private static class Data {
         int batteryPercent;
         NetworkStatusHelper.Status network;
@@ -39,7 +42,7 @@ public class StatusRowWidget implements HomeWidget {
     private int textColor;
 
     @Override
-    public String id() { return "status_row"; }
+    public String id() { return ID; }
 
     @Override
     public boolean isEnabled(SharedPreferences prefs) {
