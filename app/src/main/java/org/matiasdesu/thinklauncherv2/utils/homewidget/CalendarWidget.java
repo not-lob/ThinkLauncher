@@ -48,6 +48,7 @@ public class CalendarWidget implements HomeWidget {
     }
 
     private LinearLayout container;
+    private TextView headerView;
     private TextView permissionPrompt;
     private LinearLayout monthSection;
     private TextView monthTitle;
@@ -59,6 +60,7 @@ public class CalendarWidget implements HomeWidget {
     private int agendaCount, lookaheadDays;
     private int textColor, bgColor;
     private int horizontalPosition;
+    private int fontSize;
     private List<Calendar> gridDays;
     private Calendar currentMonth;
 
@@ -76,7 +78,8 @@ public class CalendarWidget implements HomeWidget {
                 "home_calendar_enabled", "home_calendar_show_month_grid", "home_calendar_show_agenda",
                 "home_calendar_agenda_count", "home_calendar_lookahead_days",
                 "home_calendar_show_event_dots", "home_calendar_font_size", "home_calendar_cell_size",
-                "home_calendar_horizontal_position"
+                "home_calendar_horizontal_position", "home_calendar_show_header",
+                "home_calendar_header_text", "home_calendar_header_font_size", "home_calendar_header_bold"
         };
     }
 
@@ -89,7 +92,7 @@ public class CalendarWidget implements HomeWidget {
         showEventDots = prefs.getInt("home_calendar_show_event_dots", 1) == 1;
         agendaCount = prefs.getInt("home_calendar_agenda_count", 3);
         lookaheadDays = prefs.getInt("home_calendar_lookahead_days", 7);
-        int fontSize = prefs.getInt("home_calendar_font_size", 14);
+        fontSize = prefs.getInt("home_calendar_font_size", 14);
         horizontalPosition = prefs.getInt("home_calendar_horizontal_position", 0);
         currentMonth = Calendar.getInstance();
 
@@ -100,6 +103,22 @@ public class CalendarWidget implements HomeWidget {
         container = new LinearLayout(host);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(padX, padY, padX, padY);
+
+        if (prefs.getInt("home_calendar_show_header", 0) == 1) {
+            int headerFontSize = prefs.getInt("home_calendar_header_font_size", 20);
+            boolean headerBold = prefs.getInt("home_calendar_header_bold", 1) == 1;
+            headerView = new StrokeTextView(host);
+            headerView.setText(prefs.getString("home_calendar_header_text", "Calendar"));
+            headerView.setTextColor(textColor);
+            headerView.setTextSize(headerFontSize);
+            headerView.setTypeface(null, headerBold ? Typeface.BOLD : Typeface.NORMAL);
+            LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            headerLp.bottomMargin = (int) (6 * density);
+            container.addView(headerView, headerLp);
+        } else {
+            headerView = null;
+        }
 
         permissionPrompt = new StrokeTextView(host);
         permissionPrompt.setTextColor(textColor);
@@ -265,6 +284,7 @@ public class CalendarWidget implements HomeWidget {
                 TextView empty = new StrokeTextView(agendaSection.getContext());
                 empty.setText("No upcoming events");
                 empty.setTextColor(textColor);
+                empty.setTextSize(fontSize);
                 empty.setAlpha(0.6f);
                 agendaSection.addView(empty);
             } else {
@@ -272,6 +292,7 @@ public class CalendarWidget implements HomeWidget {
                 for (CalendarEventsHelper.CalendarEvent event : events) {
                     TextView row = new StrokeTextView(agendaSection.getContext());
                     row.setTextColor(textColor);
+                    row.setTextSize(fontSize);
                     row.setMaxLines(1);
                     row.setEllipsize(TextUtils.TruncateAt.END);
                     String when = event.allDay ? "" : timeFmt.format(new java.util.Date(event.begin)) + "  ";

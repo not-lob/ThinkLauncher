@@ -7,6 +7,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.ui.RenameDialog;
 import org.matiasdesu.thinklauncherv2.utils.FontHelper;
 import org.matiasdesu.thinklauncherv2.utils.FontRowBinder;
 import org.matiasdesu.thinklauncherv2.utils.RepeatListener;
@@ -26,6 +27,10 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
     private int fontSize;
     private int cellSize;
     private int horizontalPosition;
+    private int showHeader;
+    private String headerText;
+    private int headerFontSize;
+    private int headerBold;
 
     @Override
     protected int getLayoutResId() {
@@ -50,6 +55,10 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
         fontSize = prefs.getInt("home_calendar_font_size", 14);
         cellSize = prefs.getInt("home_calendar_cell_size", 32);
         horizontalPosition = prefs.getInt("home_calendar_horizontal_position", 0);
+        showHeader = prefs.getInt("home_calendar_show_header", 0);
+        headerText = prefs.getString("home_calendar_header_text", "Calendar");
+        headerFontSize = prefs.getInt("home_calendar_header_font_size", 20);
+        headerBold = prefs.getInt("home_calendar_header_bold", 1);
 
         View enabledContainer = findViewById(R.id.home_calendar_enabled_container);
         TextView enabledValueTv = enabledContainer.findViewById(R.id.value_text);
@@ -89,6 +98,28 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
         horizontalValueTv.setText(horizontalText(horizontalPosition));
         horizontalValueTv.setMinWidth(
                 TextWidthHelper.getMaxTextWidthPx(horizontalValueTv, new String[] { "LEFT", "CENTER", "RIGHT" }));
+
+        View headerContainer = findViewById(R.id.home_calendar_header_container);
+        TextView headerValueTv = headerContainer.findViewById(R.id.value_text);
+        headerValueTv.setText(onOff(showHeader));
+        headerValueTv.setMinWidth(TextWidthHelper.getMaxTextWidthPx(headerValueTv, new String[] { "OFF", "ON" }));
+
+        TextView headerTextValueTv = findViewById(R.id.home_calendar_header_text_value);
+        headerTextValueTv.setText(headerText);
+        headerTextValueTv.setOnClickListener(v -> new RenameDialog(this, headerText, newText -> {
+            headerText = newText;
+            headerTextValueTv.setText(headerText);
+            prefs.edit().putString("home_calendar_header_text", headerText).apply();
+        }).show());
+
+        View headerFontSizeContainer = findViewById(R.id.home_calendar_header_font_size_container);
+        TextView headerFontSizeValueTv = headerFontSizeContainer.findViewById(R.id.value_text);
+        headerFontSizeValueTv.setText(String.valueOf(headerFontSize));
+
+        View headerBoldContainer = findViewById(R.id.home_calendar_header_bold_container);
+        TextView headerBoldValueTv = headerBoldContainer.findViewById(R.id.value_text);
+        headerBoldValueTv.setText(onOff(headerBold));
+        headerBoldValueTv.setMinWidth(TextWidthHelper.getMaxTextWidthPx(headerBoldValueTv, new String[] { "OFF", "ON" }));
 
         ImageButton minusEnabled = enabledContainer.findViewById(R.id.btn_minus);
         ImageButton plusEnabled = enabledContainer.findViewById(R.id.btn_plus);
@@ -235,6 +266,53 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
             prefs.edit().putInt("home_calendar_horizontal_position", horizontalPosition).apply();
         });
 
+        ImageButton minusHeader = headerContainer.findViewById(R.id.btn_minus);
+        ImageButton plusHeader = headerContainer.findViewById(R.id.btn_plus);
+        minusHeader.setOnClickListener(v -> {
+            showHeader = (showHeader - 1 + 2) % 2;
+            headerValueTv.setText(onOff(showHeader));
+            prefs.edit().putInt("home_calendar_show_header", showHeader).apply();
+            refreshVisibility();
+            refreshPagination();
+        });
+        plusHeader.setOnClickListener(v -> {
+            showHeader = (showHeader + 1) % 2;
+            headerValueTv.setText(onOff(showHeader));
+            prefs.edit().putInt("home_calendar_show_header", showHeader).apply();
+            refreshVisibility();
+            refreshPagination();
+        });
+
+        ImageButton minusHeaderFontSize = headerFontSizeContainer.findViewById(R.id.btn_minus);
+        ImageButton plusHeaderFontSize = headerFontSizeContainer.findViewById(R.id.btn_plus);
+        minusHeaderFontSize.setOnTouchListener(new RepeatListener(v -> {
+            if (headerFontSize > 10) {
+                headerFontSize--;
+                headerFontSizeValueTv.setText(String.valueOf(headerFontSize));
+                prefs.edit().putInt("home_calendar_header_font_size", headerFontSize).apply();
+            }
+        }));
+        plusHeaderFontSize.setOnTouchListener(new RepeatListener(v -> {
+            if (headerFontSize < 48) {
+                headerFontSize++;
+                headerFontSizeValueTv.setText(String.valueOf(headerFontSize));
+                prefs.edit().putInt("home_calendar_header_font_size", headerFontSize).apply();
+            }
+        }));
+
+        ImageButton minusHeaderBold = headerBoldContainer.findViewById(R.id.btn_minus);
+        ImageButton plusHeaderBold = headerBoldContainer.findViewById(R.id.btn_plus);
+        minusHeaderBold.setOnClickListener(v -> {
+            headerBold = (headerBold - 1 + 2) % 2;
+            headerBoldValueTv.setText(onOff(headerBold));
+            prefs.edit().putInt("home_calendar_header_bold", headerBold).apply();
+        });
+        plusHeaderBold.setOnClickListener(v -> {
+            headerBold = (headerBold + 1) % 2;
+            headerBoldValueTv.setText(onOff(headerBold));
+            prefs.edit().putInt("home_calendar_header_bold", headerBold).apply();
+        });
+
         FontRowBinder.bind(this, findViewById(R.id.home_calendar_font_container), FontHelper.SLOT_HOME_CALENDAR);
 
         initPagination(this::refreshVisibility);
@@ -247,6 +325,14 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
         findViewById(R.id.home_calendar_font_size_layout).setVisibility(vis);
         findViewById(R.id.home_calendar_font_layout).setVisibility(vis);
         findViewById(R.id.home_calendar_horizontal_layout).setVisibility(vis);
+        findViewById(R.id.home_calendar_header_layout).setVisibility(vis);
+
+        findViewById(R.id.home_calendar_header_text_layout)
+                .setVisibility(enabled == 1 && showHeader == 1 ? View.VISIBLE : View.GONE);
+        findViewById(R.id.home_calendar_header_font_size_layout)
+                .setVisibility(enabled == 1 && showHeader == 1 ? View.VISIBLE : View.GONE);
+        findViewById(R.id.home_calendar_header_bold_layout)
+                .setVisibility(enabled == 1 && showHeader == 1 ? View.VISIBLE : View.GONE);
 
         findViewById(R.id.home_calendar_event_dots_layout)
                 .setVisibility(enabled == 1 && showMonthGrid == 1 ? View.VISIBLE : View.GONE);

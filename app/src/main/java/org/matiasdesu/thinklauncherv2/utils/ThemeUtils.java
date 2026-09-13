@@ -218,7 +218,8 @@ public class ThemeUtils {
                     id == R.id.gesture_record_button || id == R.id.gesture_app_button ||
                     id == R.id.app_button ||
                     id == R.id.volume_up_button || id == R.id.volume_down_button ||
-                    id == R.id.reset_button_text || id == R.id.add_font_button_text) {
+                    id == R.id.reset_button_text || id == R.id.add_font_button_text ||
+                    id == R.id.home_calendar_header_text_value || id == R.id.now_reading_header_text_value) {
                     applyButtonTheme(tv, theme, context);
                 }
             } else if (child instanceof ImageView) {
