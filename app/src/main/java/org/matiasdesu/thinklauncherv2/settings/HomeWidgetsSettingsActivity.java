@@ -4,12 +4,14 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.matiasdesu.thinklauncherv2.R;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
 import org.matiasdesu.thinklauncherv2.utils.RepeatListener;
 import org.matiasdesu.thinklauncherv2.utils.ThemeUtils;
 
@@ -162,6 +164,13 @@ public class HomeWidgetsSettingsActivity extends BaseSettingsActivity {
             downBtn.setAlpha(index < order.size() - 1 ? 1f : 0.3f);
             upBtn.setOnClickListener(v -> move(index, index - 1));
             downBtn.setOnClickListener(v -> move(index, index + 1));
+
+            // renderList() runs from onResume (and again after every reorder), i.e. after
+            // BaseSettingsActivity's font pass and the onCreate theme pass have already walked the
+            // tree - so each freshly inflated row has to be themed and fonted itself, or these
+            // rows alone render in the system font. Same per-row call AppBarAppsActivity makes.
+            ThemeUtils.applyThemeToViewGroup((ViewGroup) row, theme, this);
+            FontHelper.applyToViewTree(this, row);
 
             listContainer.addView(row);
         }

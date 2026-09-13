@@ -72,8 +72,9 @@ public class StatusRowWidget implements HomeWidget {
         container = new LinearLayout(host);
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setGravity(Gravity.CENTER_VERTICAL);
-        container.setPadding((int) (32 * density / 2), (int) (5 * density / 2),
-                (int) (32 * density / 2), (int) (5 * density / 2));
+        int padX = WidgetLayoutUtils.horizontalPaddingPx(density);
+        int padY = WidgetLayoutUtils.verticalPaddingPx(density);
+        container.setPadding(padX, padY, padX, padY);
 
         if (showBatteryIcon) {
             batteryIcon = new BatteryLevelView(host);

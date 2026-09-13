@@ -83,12 +83,13 @@ public class NowReadingWidget implements HomeWidget {
         float density = host.getResources().getDisplayMetrics().density;
         int coverSizePx = (int) (coverSizeDp * density);
         int gapPx = (int) (10 * density);
-        int pad = (int) (16 * density / 2);
+        int padX = WidgetLayoutUtils.horizontalPaddingPx(density);
+        int padY = (int) (16 * density / 2);
 
         container = new LinearLayout(host);
         container.setOrientation(LinearLayout.HORIZONTAL);
         container.setGravity(Gravity.CENTER_VERTICAL);
-        container.setPadding(pad, pad, pad, pad);
+        container.setPadding(padX, padY, padX, padY);
         container.setClickable(true);
         container.setOnClickListener(v -> {
             Data data = (Data) container.getTag();
