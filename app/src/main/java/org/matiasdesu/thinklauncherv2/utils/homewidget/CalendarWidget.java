@@ -94,11 +94,12 @@ public class CalendarWidget implements HomeWidget {
         currentMonth = Calendar.getInstance();
 
         float density = host.getResources().getDisplayMetrics().density;
-        int pad = (int) (16 * density / 2);
+        int padX = WidgetLayoutUtils.horizontalPaddingPx(density);
+        int padY = (int) (16 * density / 2);
 
         container = new LinearLayout(host);
         container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(pad, pad, pad, pad);
+        container.setPadding(padX, padY, padX, padY);
 
         permissionPrompt = new StrokeTextView(host);
         permissionPrompt.setTextColor(textColor);
