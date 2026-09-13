@@ -20,6 +20,7 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
 
     private int enabled;
     private int showMonthGrid;
+    private int monthTitleBold;
     private int showEventDots;
     private int showAgenda;
     private int agendaCount;
@@ -48,6 +49,7 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
 
         enabled = prefs.getInt("home_calendar_enabled", 0);
         showMonthGrid = prefs.getInt("home_calendar_show_month_grid", 1);
+        monthTitleBold = prefs.getInt("home_calendar_month_title_bold", 1);
         showEventDots = prefs.getInt("home_calendar_show_event_dots", 1);
         showAgenda = prefs.getInt("home_calendar_show_agenda", 1);
         agendaCount = prefs.getInt("home_calendar_agenda_count", 3);
@@ -68,6 +70,11 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
         View monthGridContainer = findViewById(R.id.home_calendar_month_grid_container);
         TextView monthGridValueTv = monthGridContainer.findViewById(R.id.value_text);
         monthGridValueTv.setText(onOff(showMonthGrid));
+
+        View monthTitleBoldContainer = findViewById(R.id.home_calendar_month_title_bold_container);
+        TextView monthTitleBoldValueTv = monthTitleBoldContainer.findViewById(R.id.value_text);
+        monthTitleBoldValueTv.setText(onOff(monthTitleBold));
+        monthTitleBoldValueTv.setMinWidth(TextWidthHelper.getMaxTextWidthPx(monthTitleBoldValueTv, new String[] { "OFF", "ON" }));
 
         View eventDotsContainer = findViewById(R.id.home_calendar_event_dots_container);
         TextView eventDotsValueTv = eventDotsContainer.findViewById(R.id.value_text);
@@ -153,6 +160,19 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
             prefs.edit().putInt("home_calendar_show_month_grid", showMonthGrid).apply();
             refreshVisibility();
             refreshPagination();
+        });
+
+        ImageButton minusMonthTitleBold = monthTitleBoldContainer.findViewById(R.id.btn_minus);
+        ImageButton plusMonthTitleBold = monthTitleBoldContainer.findViewById(R.id.btn_plus);
+        minusMonthTitleBold.setOnClickListener(v -> {
+            monthTitleBold = (monthTitleBold - 1 + 2) % 2;
+            monthTitleBoldValueTv.setText(onOff(monthTitleBold));
+            prefs.edit().putInt("home_calendar_month_title_bold", monthTitleBold).apply();
+        });
+        plusMonthTitleBold.setOnClickListener(v -> {
+            monthTitleBold = (monthTitleBold + 1) % 2;
+            monthTitleBoldValueTv.setText(onOff(monthTitleBold));
+            prefs.edit().putInt("home_calendar_month_title_bold", monthTitleBold).apply();
         });
 
         ImageButton minusEventDots = eventDotsContainer.findViewById(R.id.btn_minus);
@@ -334,6 +354,8 @@ public class HomeCalendarSettingsActivity extends BaseSettingsActivity {
         findViewById(R.id.home_calendar_header_bold_layout)
                 .setVisibility(enabled == 1 && showHeader == 1 ? View.VISIBLE : View.GONE);
 
+        findViewById(R.id.home_calendar_month_title_bold_layout)
+                .setVisibility(enabled == 1 && showMonthGrid == 1 ? View.VISIBLE : View.GONE);
         findViewById(R.id.home_calendar_event_dots_layout)
                 .setVisibility(enabled == 1 && showMonthGrid == 1 ? View.VISIBLE : View.GONE);
         findViewById(R.id.home_calendar_cell_size_layout)

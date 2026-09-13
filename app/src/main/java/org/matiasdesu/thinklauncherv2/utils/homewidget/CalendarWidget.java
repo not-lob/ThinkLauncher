@@ -79,7 +79,8 @@ public class CalendarWidget implements HomeWidget {
                 "home_calendar_agenda_count", "home_calendar_lookahead_days",
                 "home_calendar_show_event_dots", "home_calendar_font_size", "home_calendar_cell_size",
                 "home_calendar_horizontal_position", "home_calendar_show_header",
-                "home_calendar_header_text", "home_calendar_header_font_size", "home_calendar_header_bold"
+                "home_calendar_header_text", "home_calendar_header_font_size", "home_calendar_header_bold",
+                "home_calendar_month_title_bold"
         };
     }
 
@@ -93,6 +94,7 @@ public class CalendarWidget implements HomeWidget {
         agendaCount = prefs.getInt("home_calendar_agenda_count", 3);
         lookaheadDays = prefs.getInt("home_calendar_lookahead_days", 7);
         fontSize = prefs.getInt("home_calendar_font_size", 14);
+        boolean monthTitleBold = prefs.getInt("home_calendar_month_title_bold", 1) == 1;
         horizontalPosition = prefs.getInt("home_calendar_horizontal_position", 0);
         currentMonth = Calendar.getInstance();
 
@@ -153,7 +155,7 @@ public class CalendarWidget implements HomeWidget {
             monthTitle = new StrokeTextView(host);
             monthTitle.setTextColor(textColor);
             monthTitle.setTextSize(fontSize + 6);
-            monthTitle.setTypeface(null, Typeface.BOLD);
+            monthTitle.setTypeface(null, monthTitleBold ? Typeface.BOLD : Typeface.NORMAL);
             monthTitle.setText(new SimpleDateFormat("MMMM", Locale.getDefault()).format(currentMonth.getTime()));
             monthSection.addView(monthTitle);
 
