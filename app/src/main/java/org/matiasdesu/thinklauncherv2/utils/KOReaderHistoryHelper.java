@@ -11,11 +11,33 @@ import java.util.List;
 public class KOReaderHistoryHelper {
     private static final String TAG = "KOReaderHistoryHelper";
 
+    private static final String[] STATS_PATTERNS = {
+            "settings/statistics.sqlite3",
+            "settings/statistics.sqlite",
+            "statistics.sqlite3",
+            "statistics.sqlite",
+            ".koreader/statistics.sqlite3",
+            ".koreader/statistics.sqlite"
+    };
+
+    private static final String[] HISTORY_PATTERNS = {
+            "history.sqlite",
+            "settings/history.sqlite",
+            ".koreader/history.sqlite"
+    };
+
     public static class BookItem {
         public String title;
         public String author;
         public String path;
         public long lastOpen;
+        /** book.id from statistics.sqlite3, or -1 when the book came from history.sqlite instead
+         *  (that table has no numeric id), used to look up reading progress. */
+        public long id = -1;
+        /** 0f-1f fraction read, or null when no progress could be resolved for this book. */
+        public Float progress;
+        /** Path to a cached cover thumbnail on disk, or null when none is available. */
+        public String coverCachePath;
 
         public BookItem(String title, String author, String path, long lastOpen) {
             this.title = title;
@@ -32,51 +54,17 @@ public class KOReaderHistoryHelper {
             return books;
         }
 
-        String root = customPath.trim();
-        if (root.endsWith("/"))
-            root = root.substring(0, root.length() - 1);
+        String root = normalizeRoot(customPath);
 
-        String[] statsPatterns = {
-                "settings/statistics.sqlite3",
-                "settings/statistics.sqlite",
-                "statistics.sqlite3",
-                "statistics.sqlite",
-                ".koreader/statistics.sqlite3",
-                ".koreader/statistics.sqlite"
-        };
-
-        String[] historyPatterns = {
-                "history.sqlite",
-                "settings/history.sqlite",
-                ".koreader/history.sqlite"
-        };
-
-        for (String pattern : statsPatterns) {
-            File statsDb = new File(root, pattern);
-            if (statsDb.exists()) {
-
-                File infoDb = null;
-                File dir = statsDb.getParentFile();
-                if (dir != null) {
-                    File f1 = new File(dir, "bookinfo.sqlite3");
-                    File f2 = new File(dir, "bookinfo.sqlite");
-                    File f3 = new File(dir, "bookinfo_cache.sqlite3");
-                    if (f1.exists()) {
-                        infoDb = f1;
-                    } else if (f2.exists()) {
-                        infoDb = f2;
-                    } else if (f3.exists()) {
-                        infoDb = f3;
-                    }
-                }
-
-                books = fetchFromStatistics(statsDb, infoDb);
-                if (!books.isEmpty())
-                    return books;
-            }
+        File statsDb = findStatsDb(root);
+        if (statsDb != null) {
+            File infoDb = findBookInfoDb(statsDb.getParentFile());
+            books = fetchFromStatistics(statsDb, infoDb);
+            if (!books.isEmpty())
+                return books;
         }
 
-        for (String pattern : historyPatterns) {
+        for (String pattern : HISTORY_PATTERNS) {
             File historyDb = new File(root, pattern);
             if (historyDb.exists()) {
                 books = fetchFromHistoryDb(historyDb);
@@ -86,6 +74,41 @@ public class KOReaderHistoryHelper {
         }
 
         return books;
+    }
+
+    /** The most recently opened book, enriched with nothing beyond what getRecentBooks provides. */
+    public static BookItem getCurrentBook(String customPath) {
+        List<BookItem> books = getRecentBooks(customPath);
+        return books.isEmpty() ? null : books.get(0);
+    }
+
+    private static String normalizeRoot(String customPath) {
+        String root = customPath.trim();
+        if (root.endsWith("/"))
+            root = root.substring(0, root.length() - 1);
+        return root;
+    }
+
+    /** Exposed so KOReaderProgressHelper can reuse the same statistics.sqlite3 probing logic. */
+    public static File findStatsDb(String customPath) {
+        if (customPath == null || customPath.trim().isEmpty()) return null;
+        String root = normalizeRoot(customPath);
+        for (String pattern : STATS_PATTERNS) {
+            File f = new File(root, pattern);
+            if (f.exists()) return f;
+        }
+        return null;
+    }
+
+    private static File findBookInfoDb(File statsDir) {
+        if (statsDir == null) return null;
+        File f1 = new File(statsDir, "bookinfo.sqlite3");
+        File f2 = new File(statsDir, "bookinfo.sqlite");
+        File f3 = new File(statsDir, "bookinfo_cache.sqlite3");
+        if (f1.exists()) return f1;
+        if (f2.exists()) return f2;
+        if (f3.exists()) return f3;
+        return null;
     }
 
     private static List<BookItem> fetchFromStatistics(File statsDbFile, File infoDbFile) {
@@ -105,6 +128,7 @@ public class KOReaderHistoryHelper {
                 }
 
                 do {
+                    long id = cursor.getLong(0);
                     String title = cursor.getString(1);
                     String authors = cursor.getString(2);
                     long lastOpen = cursor.getLong(3);
@@ -132,7 +156,9 @@ public class KOReaderHistoryHelper {
                     }
 
                     if (path != null) {
-                        books.add(new BookItem(title, authors, path, lastOpen));
+                        BookItem item = new BookItem(title, authors, path, lastOpen);
+                        item.id = id;
+                        books.add(item);
                     }
                 } while (cursor.moveToNext());
             }

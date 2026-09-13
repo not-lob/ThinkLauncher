@@ -201,42 +201,8 @@ public class KOReaderHistoryActivity extends AppCompatActivity {
             return;
         }
 
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        Uri uri;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-
-            uri = Uri.fromFile(file);
-        } else {
-            uri = Uri.fromFile(file);
-        }
-
-        String mimeType = "*/*";
-        String lowerPath = book.path.toLowerCase();
-        if (lowerPath.endsWith(".pdf"))
-            mimeType = "application/pdf";
-        else if (lowerPath.endsWith(".epub"))
-            mimeType = "application/epub+zip";
-        else if (lowerPath.endsWith(".mobi"))
-            mimeType = "application/x-mobipocket-ebook";
-        else if (lowerPath.endsWith(".fb2"))
-            mimeType = "application/x-fictionbook+xml";
-        else if (lowerPath.endsWith(".cbz"))
-            mimeType = "application/x-cbz";
-
-        intent.setDataAndType(uri, mimeType);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-
-        String pkg = "org.koreader.launcher";
-        intent.setPackage(pkg);
-
-        if (intent.resolveActivity(getPackageManager()) == null) {
-            pkg = "org.koreader.launcher.fdroid";
-            intent.setPackage(pkg);
-        }
-
         try {
-            startActivity(intent);
+            startActivity(org.matiasdesu.thinklauncherv2.utils.KOReaderLaunchHelper.buildOpenIntent(this, book.path));
             new Handler(Looper.getMainLooper()).postDelayed(this::finish, 500);
         } catch (Exception e) {
             Toast.makeText(this, "Could not open KOReader: " + e.getMessage(), Toast.LENGTH_SHORT).show();
