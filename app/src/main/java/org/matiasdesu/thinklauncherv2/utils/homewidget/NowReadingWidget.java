@@ -65,7 +65,7 @@ public class NowReadingWidget implements HomeWidget {
         return new String[] {
                 "now_reading_enabled", "now_reading_show_cover", "now_reading_show_title",
                 "now_reading_show_author", "now_reading_show_progress", "now_reading_progress_style",
-                "now_reading_title_font_size", "now_reading_author_font_size",
+                "now_reading_title_font_size", "now_reading_title_bold", "now_reading_author_font_size",
                 "now_reading_cover_size", "now_reading_horizontal_position", "koreader_path",
                 "now_reading_show_header", "now_reading_header_text",
                 "now_reading_header_font_size", "now_reading_header_bold"
@@ -80,6 +80,7 @@ public class NowReadingWidget implements HomeWidget {
         showProgress = prefs.getInt("now_reading_show_progress", 1) == 1;
         progressStyle = prefs.getInt("now_reading_progress_style", 0);
         int titleSize = prefs.getInt("now_reading_title_font_size", 18);
+        boolean titleBold = prefs.getInt("now_reading_title_bold", 1) == 1;
         int authorSize = prefs.getInt("now_reading_author_font_size", 14);
         int coverSizeDp = prefs.getInt("now_reading_cover_size", 64);
         horizontalPosition = prefs.getInt("now_reading_horizontal_position", 0);
@@ -146,7 +147,7 @@ public class NowReadingWidget implements HomeWidget {
             titleView = new StrokeTextView(host);
             titleView.setTextColor(textColor);
             titleView.setTextSize(titleSize);
-            titleView.setTypeface(null, Typeface.BOLD);
+            titleView.setTypeface(null, titleBold ? Typeface.BOLD : Typeface.NORMAL);
             titleView.setMaxLines(1);
             titleView.setEllipsize(TextUtils.TruncateAt.END);
             textColumn.addView(titleView);
