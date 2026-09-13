@@ -2395,6 +2395,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
         super.onResume();
         registerReceiver(homeButtonReceiver, new IntentFilter("android.intent.action.CLOSE_SYSTEM_DIALOGS"),
                 Context.RECEIVER_NOT_EXPORTED);
+        homeWidgetHost.registerNetworkCallback(this);
         gestureHandler.loadApps();
         dropIconPackIfUninstalled();
         if (customGestureLibrary != null) {
@@ -3198,6 +3199,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     protected void onPause() {
         super.onPause();
         unregisterReceiver(homeButtonReceiver);
+        homeWidgetHost.unregisterNetworkCallback(this);
         stopMusicMonitoring();
         if (handler != null) {
             handler.removeCallbacksAndMessages(null);

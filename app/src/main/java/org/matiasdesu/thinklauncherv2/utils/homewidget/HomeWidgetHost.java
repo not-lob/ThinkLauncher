@@ -3,6 +3,9 @@ package org.matiasdesu.thinklauncherv2.utils.homewidget;
 import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
@@ -11,6 +14,7 @@ import android.widget.RelativeLayout;
 
 import org.matiasdesu.thinklauncherv2.utils.EinkRefreshHelper;
 import org.matiasdesu.thinklauncherv2.utils.FontHelper;
+import org.matiasdesu.thinklauncherv2.utils.NetworkStatusHelper;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -37,8 +41,16 @@ public class HomeWidgetHost {
     private int lastPrefsSignature;
     private boolean hasSnapshot;
 
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private static final long NETWORK_REFRESH_DEBOUNCE_MS = 500L;
+    private final Runnable networkRefreshRunnable;
+
     public HomeWidgetHost(Activity host) {
         this.host = host;
+        this.networkRefreshRunnable = () -> {
+            NetworkStatusHelper.invalidate();
+            refreshWidget(host, StatusRowWidget.ID);
+        };
         widgets.add(new StatusRowWidget());
         widgets.add(new NowReadingWidget());
         widgets.add(new CalendarWidget());
@@ -236,6 +248,106 @@ public class HomeWidgetHost {
                 });
             });
         }
+    }
+
+    /**
+     * Reloads and rebinds a single widget's data, outside the normal onResume batch. Used by the
+     * network callback below so a connectivity change updates the status row immediately instead
+     * of waiting for the next onResume (NetworkStatusHelper otherwise only gets re-queried then -
+     * so a WiFi connect/disconnect while the launcher stays in the foreground would never show up).
+     */
+    private void refreshWidget(Context ctx, String widgetId) {
+        if (!createdViews.containsKey(widgetId)) return;
+        HomeWidget target = null;
+        for (HomeWidget widget : widgets) {
+            if (widget.id().equals(widgetId)) {
+                target = widget;
+                break;
+            }
+        }
+        if (target == null) return;
+        final HomeWidget widget = target;
+        ensureBgThread();
+        final Context appCtx = ctx.getApplicationContext();
+        final SharedPreferences prefs = host.getSharedPreferences("prefs", Context.MODE_PRIVATE);
+        bgHandler.post(() -> {
+            Object data;
+            try {
+                data = widget.loadData(appCtx, prefs);
+            } catch (Exception e) {
+                data = null;
+            }
+            final Object result = data;
+            mainHandler.post(() -> {
+                View view = createdViews.get(widgetId);
+                if (view == null) return;
+                widget.bind(result);
+                FontHelper.applySlotToViewTree(host, view, widgetId);
+                EinkRefreshHelper.refreshEink(host.getWindow(), prefs,
+                        prefs.getInt("eink_refresh_delay", 100));
+            });
+        });
+    }
+
+    /**
+     * Registers a lightweight, event-driven callback for connectivity changes - not a ticking
+     * timer, just a listener the OS calls when the default network actually changes - and uses it
+     * to refresh the status row's WiFi icon. Without this, the icon is only ever re-queried from
+     * MainActivity.onResume, so e.g. WiFi finishing its post-boot handshake after the launcher has
+     * already drawn (or being toggled while the user stays on the home screen) left the icon stuck
+     * showing whatever was true at the last resume. Call once from onResume; pairs with
+     * {@link #unregisterNetworkCallback}.
+     */
+    public void registerNetworkCallback(Context ctx) {
+        if (networkCallback != null) return;
+        ConnectivityManager cm = (ConnectivityManager) ctx.getApplicationContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return;
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override
+            public void onAvailable(Network network) {
+                scheduleNetworkRefresh();
+            }
+
+            @Override
+            public void onLost(Network network) {
+                scheduleNetworkRefresh();
+            }
+
+            @Override
+            public void onCapabilitiesChanged(Network network, NetworkCapabilities caps) {
+                scheduleNetworkRefresh();
+            }
+        };
+        try {
+            cm.registerDefaultNetworkCallback(networkCallback);
+        } catch (Exception ignored) {
+            networkCallback = null;
+        }
+    }
+
+    /** Unregisters the callback registered by {@link #registerNetworkCallback}; call from onPause. */
+    public void unregisterNetworkCallback(Context ctx) {
+        if (networkCallback == null) return;
+        ConnectivityManager cm = (ConnectivityManager) ctx.getApplicationContext()
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm != null) {
+            try {
+                cm.unregisterNetworkCallback(networkCallback);
+            } catch (Exception ignored) {
+                // Already unregistered, e.g. connectivity service died - nothing to clean up.
+            }
+        }
+        networkCallback = null;
+        mainHandler.removeCallbacks(networkRefreshRunnable);
+    }
+
+    // onAvailable/onLost/onCapabilitiesChanged can each fire a few times in a burst while a
+    // connection is being established (signal strength ticks, capability flags settle one at a
+    // time) - debounce to one refresh per burst instead of hammering loadData/bind repeatedly.
+    private void scheduleNetworkRefresh() {
+        mainHandler.removeCallbacks(networkRefreshRunnable);
+        mainHandler.postDelayed(networkRefreshRunnable, NETWORK_REFRESH_DEBOUNCE_MS);
     }
 
     private void ensureBgThread() {
