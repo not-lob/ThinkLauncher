@@ -89,9 +89,6 @@
             android:name=".settings.HomeWidgetsSettingsActivity"
             android:exported="false" />
         <activity
-            android:name=".settings.HomeWidgetOrderSettingsActivity"
-            android:exported="false" />
-        <activity
             android:name=".settings.StatusRowSettingsActivity"
             android:exported="false" />
         <activity

@@ -72,18 +72,16 @@
                 android:orientation="vertical">
 
             <LinearLayout
-                android:id="@+id/status_row_settings_button"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_margin="16dp"
-                android:clickable="true">
+                android:layout_margin="16dp">
 
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@drawable/battery"
+                    android:src="@drawable/padding_icon"
                     android:layout_marginEnd="8dp"
                     android:tint="?attr/text_color" />
 
@@ -91,111 +89,38 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Status Row:"
+                    android:text="Spacing:"
                     android:textColor="?attr/text_color"
                     android:textSize="18sp"
                     android:textStyle="bold" />
 
-                <RelativeLayout
-                    android:layout_width="160dp"
-                    android:layout_height="wrap_content">
-
-                    <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@drawable/forward_arrow"
-                        android:layout_alignParentRight="true"
-                        android:layout_centerVertical="true"
-                        android:padding="12dp"
-                        android:tint="?attr/text_color" />
-
-                </RelativeLayout>
+                <include layout="@layout/plus_minus_layout"
+                    android:id="@+id/spacing_container" />
 
             </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:background="?attr/text_color"
+                android:alpha="0.3" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:text="Order (top to bottom) - tap to configure:"
+                android:textColor="?attr/text_color"
+                android:textSize="16sp"
+                android:alpha="0.6" />
 
             <LinearLayout
-                android:id="@+id/now_reading_settings_button"
+                android:id="@+id/order_list_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_margin="16dp"
-                android:clickable="true">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/koreader"
-                    android:layout_marginEnd="8dp"
-                    android:tint="?attr/text_color" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Now Reading:"
-                    android:textColor="?attr/text_color"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <RelativeLayout
-                    android:layout_width="160dp"
-                    android:layout_height="wrap_content">
-
-                    <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@drawable/forward_arrow"
-                        android:layout_alignParentRight="true"
-                        android:layout_centerVertical="true"
-                        android:padding="12dp"
-                        android:tint="?attr/text_color" />
-
-                </RelativeLayout>
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/home_calendar_settings_button"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_margin="16dp"
-                android:clickable="true">
-
-                <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/date"
-                    android:layout_marginEnd="8dp"
-                    android:tint="?attr/text_color" />
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Calendar Widget:"
-                    android:textColor="?attr/text_color"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
-
-                <RelativeLayout
-                    android:layout_width="160dp"
-                    android:layout_height="wrap_content">
-
-                    <ImageView
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:src="@drawable/forward_arrow"
-                        android:layout_alignParentRight="true"
-                        android:layout_centerVertical="true"
-                        android:padding="12dp"
-                        android:tint="?attr/text_color" />
-
-                </RelativeLayout>
-
-            </LinearLayout>
+                android:orientation="vertical" />
 
             </LinearLayout>
 
