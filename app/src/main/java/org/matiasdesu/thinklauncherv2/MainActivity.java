@@ -819,6 +819,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             dateSdf = new SimpleDateFormat(format);
             dateView = new StrokeTextView(this);
             dateView.setId(View.generateViewId());
+            dateView.setIncludeFontPadding(false);
             updateDateText();
             dateView.setTextColor(getDateColorValue());
             dateView.setTextSize(dateFontSize);
@@ -849,6 +850,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             if (showCalendarEvents) {
                 calendarEventView = new StrokeTextView(this);
                 calendarEventView.setId(View.generateViewId());
+                calendarEventView.setIncludeFontPadding(false);
                 updateCalendarEventText();
                 calendarEventView.setTextColor(getDateColorValue());
                 calendarEventView.setTextSize(calendarEventFontSize);
@@ -877,6 +879,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 timeSdf = new SimpleDateFormat(getTimePattern());
                 timeView = new StrokeTextView(this);
                 timeView.setId(View.generateViewId());
+                timeView.setIncludeFontPadding(false);
                 timeView.setText(timeSdf.format(new Date()));
                 timeView.setTextColor(getTimeColorValue());
                 timeView.setTextSize(timeFontSize);
@@ -909,6 +912,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 timeSdf = new SimpleDateFormat(getTimePattern());
                 timeView = new StrokeTextView(this);
                 timeView.setId(View.generateViewId());
+                timeView.setIncludeFontPadding(false);
                 timeView.setText(timeSdf.format(new Date()));
                 timeView.setTextColor(getTimeColorValue());
                 timeView.setTextSize(timeFontSize);
@@ -944,6 +948,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 dateSdf = new SimpleDateFormat(format);
                 dateView = new StrokeTextView(this);
                 dateView.setId(View.generateViewId());
+                dateView.setIncludeFontPadding(false);
                 updateDateText();
                 dateView.setTextColor(getDateColorValue());
                 dateView.setTextSize(dateFontSize);
@@ -977,6 +982,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             if (showCalendarEvents) {
                 calendarEventView = new StrokeTextView(this);
                 calendarEventView.setId(View.generateViewId());
+                calendarEventView.setIncludeFontPadding(false);
                 updateCalendarEventText();
                 calendarEventView.setTextColor(getDateColorValue());
                 calendarEventView.setTextSize(calendarEventFontSize);

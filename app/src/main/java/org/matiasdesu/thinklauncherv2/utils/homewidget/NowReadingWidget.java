@@ -37,6 +37,8 @@ public class NowReadingWidget implements HomeWidget {
         android.graphics.Bitmap coverBitmap;
     }
 
+    private LinearLayout root;
+    private TextView headerView;
     private LinearLayout container;
     private ImageView coverView;
     private TextView titleView;
@@ -64,12 +66,14 @@ public class NowReadingWidget implements HomeWidget {
                 "now_reading_enabled", "now_reading_show_cover", "now_reading_show_title",
                 "now_reading_show_author", "now_reading_show_progress", "now_reading_progress_style",
                 "now_reading_title_font_size", "now_reading_author_font_size",
-                "now_reading_cover_size", "now_reading_horizontal_position", "koreader_path"
+                "now_reading_cover_size", "now_reading_horizontal_position", "koreader_path",
+                "now_reading_show_header", "now_reading_header_text",
+                "now_reading_header_font_size", "now_reading_header_bold"
         };
     }
 
     @Override
-    public View createView(Activity host, RelativeLayout root, SharedPreferences prefs, int bgColor, int textColor) {
+    public View createView(Activity host, RelativeLayout hostRoot, SharedPreferences prefs, int bgColor, int textColor) {
         showCover = prefs.getInt("now_reading_show_cover", 1) == 1;
         showTitle = prefs.getInt("now_reading_show_title", 1) == 1;
         showAuthor = prefs.getInt("now_reading_show_author", 1) == 1;
@@ -80,25 +84,48 @@ public class NowReadingWidget implements HomeWidget {
         int coverSizeDp = prefs.getInt("now_reading_cover_size", 64);
         horizontalPosition = prefs.getInt("now_reading_horizontal_position", 0);
 
+        boolean showHeader = prefs.getInt("now_reading_show_header", 0) == 1;
+        int headerFontSize = prefs.getInt("now_reading_header_font_size", 20);
+        boolean headerBold = prefs.getInt("now_reading_header_bold", 1) == 1;
+
         float density = host.getResources().getDisplayMetrics().density;
         int coverSizePx = (int) (coverSizeDp * density);
         int gapPx = (int) (10 * density);
         int padX = WidgetLayoutUtils.horizontalPaddingPx(density);
         int padY = (int) (16 * density / 2);
 
-        container = new LinearLayout(host);
-        container.setOrientation(LinearLayout.HORIZONTAL);
-        container.setGravity(Gravity.CENTER_VERTICAL);
-        container.setPadding(padX, padY, padX, padY);
-        container.setClickable(true);
-        container.setOnClickListener(v -> {
-            Data data = (Data) container.getTag();
+        root = new LinearLayout(host);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(padX, padY, padX, padY);
+        root.setClickable(true);
+        root.setOnClickListener(v -> {
+            Data data = (Data) root.getTag();
             if (data != null && data.book != null) {
                 KOReaderLaunchHelper.openBook(host, data.book.path);
             } else {
                 host.startActivity(new Intent(host, KOReaderHistoryActivity.class));
             }
         });
+
+        if (showHeader) {
+            headerView = new StrokeTextView(host);
+            headerView.setText(prefs.getString("now_reading_header_text", "Now Reading"));
+            headerView.setTextColor(textColor);
+            headerView.setTextSize(headerFontSize);
+            headerView.setTypeface(null, headerBold ? Typeface.BOLD : Typeface.NORMAL);
+            LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            headerLp.bottomMargin = (int) (6 * density);
+            root.addView(headerView, headerLp);
+        } else {
+            headerView = null;
+        }
+
+        container = new LinearLayout(host);
+        container.setOrientation(LinearLayout.HORIZONTAL);
+        container.setGravity(Gravity.CENTER_VERTICAL);
+        root.addView(container, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
         if (showCover) {
             coverView = new ImageView(host);
@@ -161,9 +188,9 @@ public class NowReadingWidget implements HomeWidget {
         RelativeLayout.LayoutParams rlp = new RelativeLayout.LayoutParams(
                 RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
         rlp.addRule(WidgetLayoutUtils.relativeHorizontalRule(horizontalPosition));
-        container.setLayoutParams(rlp);
-        container.setVisibility(View.GONE); // shown once loadData/bind resolves a book
-        return container;
+        root.setLayoutParams(rlp);
+        root.setVisibility(View.GONE); // shown once loadData/bind resolves a book
+        return root;
     }
 
     @Override
@@ -194,9 +221,9 @@ public class NowReadingWidget implements HomeWidget {
 
     @Override
     public void bind(Object result) {
-        if (container == null || !(result instanceof Data)) return;
+        if (root == null || !(result instanceof Data)) return;
         Data data = (Data) result;
-        container.setTag(data);
+        root.setTag(data);
 
         if (data.permissionMissing || data.pathMissing || data.book == null) {
             // Degrade to a single tappable line rather than disappearing outright, mirroring the
@@ -211,7 +238,7 @@ public class NowReadingWidget implements HomeWidget {
             if (progressText != null) progressText.setVisibility(View.GONE);
             if (progressBar != null) progressBar.setVisibility(View.GONE);
             if (coverView != null) coverView.setVisibility(View.GONE);
-            container.setVisibility(View.VISIBLE);
+            root.setVisibility(View.VISIBLE);
             return;
         }
 
@@ -255,23 +282,23 @@ public class NowReadingWidget implements HomeWidget {
                 coverView.setVisibility(View.GONE);
             }
         }
-        container.setVisibility(View.VISIBLE);
+        root.setVisibility(View.VISIBLE);
     }
 
     @Override
     public void applyInsets(int homePaddingLeftPx, int homePaddingRightPx) {
-        if (container == null) return;
-        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) container.getLayoutParams();
+        if (root == null) return;
+        RelativeLayout.LayoutParams lp = (RelativeLayout.LayoutParams) root.getLayoutParams();
         if (horizontalPosition == 0) {
             lp.leftMargin = homePaddingLeftPx;
         } else if (horizontalPosition == 2) {
             lp.rightMargin = homePaddingRightPx;
         }
-        container.setLayoutParams(lp);
+        root.setLayoutParams(lp);
     }
 
     @Override
-    public View getView() { return container; }
+    public View getView() { return root; }
 
     @Override
     public int horizontalPosition() { return horizontalPosition; }
