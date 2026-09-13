@@ -121,7 +121,7 @@ public class WallpaperSettingsActivity extends BaseSettingsActivity {
 
         minusZoomBtn.setOnTouchListener(new RepeatListener(v -> {
             float current = prefs.getFloat("wallpaper_scale", 1f);
-            float newScale = Math.max(1f, current - 0.1f);
+            float newScale = Math.max(WallpaperHelper.MIN_ZOOM_SCALE, current - 0.1f);
             newScale = Math.round(newScale * 10f) / 10f;
             prefs.edit().putFloat("wallpaper_scale", newScale).apply();
             zoomValueTv.setText(Math.round(newScale * 100f) + "%");
@@ -130,7 +130,7 @@ public class WallpaperSettingsActivity extends BaseSettingsActivity {
 
         plusZoomBtn.setOnTouchListener(new RepeatListener(v -> {
             float current = prefs.getFloat("wallpaper_scale", 1f);
-            float newScale = Math.min(3f, current + 0.1f);
+            float newScale = Math.min(WallpaperHelper.MAX_ZOOM_SCALE, current + 0.1f);
             newScale = Math.round(newScale * 10f) / 10f;
             prefs.edit().putFloat("wallpaper_scale", newScale).apply();
             zoomValueTv.setText(Math.round(newScale * 100f) + "%");
