@@ -89,6 +89,7 @@ import org.matiasdesu.thinklauncherv2.utils.FontHelper;
 import org.matiasdesu.thinklauncherv2.utils.SettingsBackupHelper;
 import org.matiasdesu.thinklauncherv2.utils.SystemAppHelper;
 import org.matiasdesu.thinklauncherv2.utils.OnyxHelper;
+import org.matiasdesu.thinklauncherv2.utils.homewidget.WidgetLayoutUtils;
 import android.graphics.Bitmap;
 
 public class MainActivity extends Activity {
@@ -781,6 +782,19 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
     }
 
     /**
+     * Insets a clock/date-block view by the same padding every pluggable home widget uses, so the
+     * whole home stack shares one text edge. These views used to hard-code a raw {@code 32}/{@code
+     * 5} *pixel* padding, which only lined up with the widgets' dp-based padding at density 2 and
+     * drifted on every other device.
+     */
+    private void applyStackPadding(TextView view) {
+        float density = getResources().getDisplayMetrics().density;
+        int padX = WidgetLayoutUtils.horizontalPaddingPx(density);
+        int padY = WidgetLayoutUtils.verticalPaddingPx(density);
+        view.setPadding(padX, padY, padX, padY);
+    }
+
+    /**
      * Builds the clock/date/calendar-event block anchored below {@code anchorId} (or
      * ALIGN_PARENT_TOP if {@code anchorId} is View.NO_ID), returning the block's own trailing view
      * id - or {@code anchorId} unchanged if neither the clock nor the date is enabled. The block's
@@ -805,7 +819,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             dateView.setTextSize(dateFontSize);
             dateView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
             applyTextEffect(dateView, dateEffect, getDateEffectColorValue());
-            dateView.setPadding(32, 5, 32, 5);
+            applyStackPadding(dateView);
             dateView.setBackgroundColor(timeDateBgColor);
             dateView.setGravity(getHorizontalGravity(dateHorizontalPosition));
 
@@ -835,7 +849,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 calendarEventView.setTextSize(calendarEventFontSize);
                 calendarEventView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
                 applyTextEffect(calendarEventView, dateEffect, getDateEffectColorValue());
-                calendarEventView.setPadding(32, 5, 32, 5);
+                applyStackPadding(calendarEventView);
                 calendarEventView.setBackgroundColor(timeDateBgColor);
                 calendarEventView.setGravity(getHorizontalGravity(dateHorizontalPosition));
                 calendarEventView.setMaxLines(1);
@@ -863,7 +877,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 timeView.setTextSize(timeFontSize);
                 timeView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
                 applyTextEffect(timeView, timeEffect, getTimeEffectColorValue());
-                timeView.setPadding(32, 5, 32, 5);
+                applyStackPadding(timeView);
                 timeView.setBackgroundColor(timeDateBgColor);
                 timeView.setGravity(getHorizontalGravity(timeHorizontalPosition));
                 RelativeLayout.LayoutParams timeParams = new RelativeLayout.LayoutParams(
@@ -894,7 +908,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 timeView.setTextSize(timeFontSize);
                 timeView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
                 applyTextEffect(timeView, timeEffect, getTimeEffectColorValue());
-                timeView.setPadding(32, 5, 32, 5);
+                applyStackPadding(timeView);
                 timeView.setBackgroundColor(timeDateBgColor);
                 timeView.setGravity(getHorizontalGravity(timeHorizontalPosition));
                 RelativeLayout.LayoutParams timeParams = new RelativeLayout.LayoutParams(
@@ -929,7 +943,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 dateView.setTextSize(dateFontSize);
                 dateView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
                 applyTextEffect(dateView, dateEffect, getDateEffectColorValue());
-                dateView.setPadding(32, 5, 32, 5);
+                applyStackPadding(dateView);
                 dateView.setBackgroundColor(timeDateBgColor);
                 dateView.setGravity(getHorizontalGravity(dateHorizontalPosition));
                 RelativeLayout.LayoutParams dateParams = new RelativeLayout.LayoutParams(
@@ -961,7 +975,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                 calendarEventView.setTextSize(calendarEventFontSize);
                 calendarEventView.setTypeface(null, boldText ? Typeface.BOLD : Typeface.NORMAL);
                 applyTextEffect(calendarEventView, dateEffect, getDateEffectColorValue());
-                calendarEventView.setPadding(32, 5, 32, 5);
+                applyStackPadding(calendarEventView);
                 calendarEventView.setBackgroundColor(timeDateBgColor);
                 calendarEventView.setGravity(getHorizontalGravity(dateHorizontalPosition));
                 calendarEventView.setMaxLines(1);
@@ -2492,6 +2506,10 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
             boolean wallpaperChanged = newHasWallpaper != hasWallpaper
                     || newWallpaperOffsetX != wallpaperOffsetX || newWallpaperOffsetY != wallpaperOffsetY
                     || newWallpaperScale != wallpaperScale || newWallpaperFileModified != wallpaperFileModified;
+            // Evaluated up front rather than as the tail of the || chain below: prefsChanged()
+            // also advances the host's snapshot, and short-circuiting past it leaves that snapshot
+            // stale, so the next resume rebuilds the home screen for a change already applied.
+            boolean widgetPrefsChanged = homeWidgetHost.prefsChanged(prefs);
             boolean layoutChanged = newMaxApps != maxApps || newHomeColumns != homeColumns || newHomePages != homePages
                     || newHomeAlignment != homeAlignment || newHomeVerticalAlignment != homeVerticalAlignment
                     || newTimePosition != timePosition || newDateVerticalPosition != dateVerticalPosition
@@ -2519,7 +2537,7 @@ private int resolveAppBarThemeColor(int colorSource, boolean isBackground) {
                     || newSettingsButtonColor != settingsButtonColor || newSearchButtonColor != searchButtonColor
                     || wallpaperChanged
                     || (newDateCalendarEvents == 1 && calendarPermissionChanged)
-                    || homeWidgetHost.prefsChanged(prefs);
+                    || widgetPrefsChanged;
             boolean onlyAlignmentChanged = (newHomeAlignment != homeAlignment
                     || newHomeVerticalAlignment != homeVerticalAlignment)
                     && !(newMaxApps != maxApps || newHomeColumns != homeColumns || newHomePages != homePages

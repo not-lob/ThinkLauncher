@@ -10,6 +10,7 @@ import android.view.View;
 import android.widget.RelativeLayout;
 
 import org.matiasdesu.thinklauncherv2.utils.EinkRefreshHelper;
+import org.matiasdesu.thinklauncherv2.utils.FontHelper;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -72,8 +73,13 @@ public class HomeWidgetHost {
             if (view.getId() == View.NO_ID) {
                 view.setId(View.generateViewId());
             }
+            // createView already set a LayoutParams carrying the widget's configured horizontal
+            // rule; addView(view, lp) below replaces it wholesale, so re-apply that rule here or a
+            // widget set to CENTER/RIGHT silently renders left (and getVisibleHorizontalPositions
+            // then tells MainActivity the app grid may sit on a side the stack isn't actually on).
             RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
                     RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+            lp.addRule(WidgetLayoutUtils.relativeHorizontalRule(widget.horizontalPosition()));
             if (anchorId == View.NO_ID) {
                 lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
             } else {
@@ -152,19 +158,33 @@ public class HomeWidgetHost {
     private static final String[] GLOBAL_PREF_KEYS = { "home_stack_order", "home_stack_spacing" };
 
     private int computeSignature(SharedPreferences prefs) {
+        // One snapshot for the whole pass: getAll() builds and copies the entire pref map on every
+        // call, and this runs once per onResume across ~40 keys.
+        Map<String, ?> all = prefs.getAll();
         int signature = 0;
         for (HomeWidget widget : widgets) {
             signature = 31 * signature + Boolean.hashCode(widget.isEnabled(prefs));
             for (String key : widget.prefKeys()) {
-                Object value = prefs.getAll().get(key);
-                signature = 31 * signature + (value == null ? 0 : value.hashCode());
+                signature = 31 * signature + valueSignature(all, key);
             }
         }
         for (String key : GLOBAL_PREF_KEYS) {
-            Object value = prefs.getAll().get(key);
-            signature = 31 * signature + (value == null ? 0 : value.hashCode());
+            signature = 31 * signature + valueSignature(all, key);
         }
         return signature;
+    }
+
+    /**
+     * Hashes one pref value, folding in whether the key is present at all. Most widget toggles
+     * default to 1 and are stored as 0/1 ints, and Integer(0).hashCode() is 0 - the same value a
+     * plain "missing key hashes to 0" scheme gives an absent key. So the very first time a user
+     * turned an on-by-default option off, the signature didn't move, prefsChanged() reported no
+     * change, and the home screen kept rendering the option as if it were still on until some
+     * other widget pref forced a rebuild.
+     */
+    private static int valueSignature(Map<String, ?> all, String key) {
+        Object value = all.get(key);
+        return value == null ? 0 : 31 * (1 + value.hashCode());
     }
 
     /**
@@ -194,8 +214,14 @@ public class HomeWidgetHost {
                 }
                 final Object result = data;
                 mainHandler.post(() -> {
-                    if (createdViews.containsKey(widget.id())) {
+                    View view = createdViews.get(widget.id());
+                    if (view != null) {
                         widget.bind(result);
+                        // bind() is what materialises the data-driven rows (calendar agenda lines,
+                        // the now-reading title/author), and it lands long after MainActivity's
+                        // onResume font pass has already walked the tree - so those rows would
+                        // keep the system font while everything around them used the custom one.
+                        FontHelper.applyToViewTree(host, view);
                     }
                     remaining[0]--;
                     if (remaining[0] == 0) {
