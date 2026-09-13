@@ -23,6 +23,7 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
     private int coverSize;
     private int showTitle;
     private int titleSize;
+    private int titleBold;
     private int showAuthor;
     private int authorSize;
     private int showProgress;
@@ -52,6 +53,7 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
         coverSize = prefs.getInt("now_reading_cover_size", 64);
         showTitle = prefs.getInt("now_reading_show_title", 1);
         titleSize = prefs.getInt("now_reading_title_font_size", 18);
+        titleBold = prefs.getInt("now_reading_title_bold", 1);
         showAuthor = prefs.getInt("now_reading_show_author", 1);
         authorSize = prefs.getInt("now_reading_author_font_size", 14);
         showProgress = prefs.getInt("now_reading_show_progress", 1);
@@ -82,6 +84,11 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
         View titleSizeContainer = findViewById(R.id.now_reading_title_size_container);
         TextView titleSizeValueTv = titleSizeContainer.findViewById(R.id.value_text);
         titleSizeValueTv.setText(String.valueOf(titleSize));
+
+        View titleBoldContainer = findViewById(R.id.now_reading_title_bold_container);
+        TextView titleBoldValueTv = titleBoldContainer.findViewById(R.id.value_text);
+        titleBoldValueTv.setText(onOff(titleBold));
+        titleBoldValueTv.setMinWidth(TextWidthHelper.getMaxTextWidthPx(titleBoldValueTv, new String[] { "OFF", "ON" }));
 
         View authorContainer = findViewById(R.id.now_reading_author_container);
         TextView authorValueTv = authorContainer.findViewById(R.id.value_text);
@@ -213,6 +220,19 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
                 prefs.edit().putInt("now_reading_title_font_size", titleSize).apply();
             }
         }));
+
+        ImageButton minusTitleBold = titleBoldContainer.findViewById(R.id.btn_minus);
+        ImageButton plusTitleBold = titleBoldContainer.findViewById(R.id.btn_plus);
+        minusTitleBold.setOnClickListener(v -> {
+            titleBold = (titleBold - 1 + 2) % 2;
+            titleBoldValueTv.setText(onOff(titleBold));
+            prefs.edit().putInt("now_reading_title_bold", titleBold).apply();
+        });
+        plusTitleBold.setOnClickListener(v -> {
+            titleBold = (titleBold + 1) % 2;
+            titleBoldValueTv.setText(onOff(titleBold));
+            prefs.edit().putInt("now_reading_title_bold", titleBold).apply();
+        });
 
         ImageButton minusAuthor = authorContainer.findViewById(R.id.btn_minus);
         ImageButton plusAuthor = authorContainer.findViewById(R.id.btn_plus);
@@ -363,6 +383,8 @@ public class NowReadingSettingsActivity extends BaseSettingsActivity {
         findViewById(R.id.now_reading_cover_size_layout)
                 .setVisibility(enabled == 1 && showCover == 1 ? View.VISIBLE : View.GONE);
         findViewById(R.id.now_reading_title_size_layout)
+                .setVisibility(enabled == 1 && showTitle == 1 ? View.VISIBLE : View.GONE);
+        findViewById(R.id.now_reading_title_bold_layout)
                 .setVisibility(enabled == 1 && showTitle == 1 ? View.VISIBLE : View.GONE);
         findViewById(R.id.now_reading_author_size_layout)
                 .setVisibility(enabled == 1 && showAuthor == 1 ? View.VISIBLE : View.GONE);
